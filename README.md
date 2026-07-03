@@ -1,5 +1,12 @@
 # L.W.S. - Listro Wiki System
 
+아직 대강 개념만 잡고, Wiki DB를 구체적으로 설계하며 개발을 진행하지는 않은 상태입니다.
+아래의 내용은 지금까지의 구상과 논의로 AI를 통해 정리해달라고 둔 것이라 정확하지 않을 수 있음을 참고바랍니다.
+
+"모든 것은 node이다."를 기반으로 데이터를 바루는 DBMS를 만드는 것이 목표라고 할 수 있겠습니다.
+
+---
+
 L.W.S. is a graph-first wiki application for managing external JSON knowledge objects. The app repository contains code, schemas, validators, indexes, APIs, UI, scripts, and docs. Real node JSON, edge JSON, event logs, indexes, runtime files, backups, and secrets live outside this repository.
 
 ## Repository Boundary
