@@ -56,8 +56,8 @@ Edge JSON의 필수 shape는 다음이다.
   "audit": {
     "created_at": "2026-06-23T00:00:00+09:00",
     "updated_at": "2026-06-23T00:00:00+09:00",
-    "created_by": "user.admin",
-    "updated_by": "user.admin"
+    "created_by": "account.admin",
+    "updated_by": "account.admin"
   }
 }
 ```
@@ -417,10 +417,12 @@ edge object의 생성/수정 이력이다.
 "audit": {
   "created_at": "2026-06-23T00:00:00+09:00",
   "updated_at": "2026-06-23T00:00:00+09:00",
-  "created_by": "user.admin",
-  "updated_by": "user.admin"
+  "created_by": "account.admin",
+  "updated_by": "account.admin"
 }
 ```
+
+`audit.created_by`와 `audit.updated_by`는 반드시 `account.*` node id를 참조한다. 사람이 수행한 작업은 로그인 계정을 사용하고, system/bootstrap/migration 같은 내부 작업은 raw string `"system"` 대신 reserved account인 `account.system`을 사용한다.
 
 ## 5. Optional fields
 
@@ -438,12 +440,7 @@ edge object의 생성/수정 이력이다.
       "type": "node",
       "target": "doc.ingress-proxy-design"
     }
-  ],
-  "access": {
-    "read_roles": ["viewer"],
-    "write_roles": ["curator"],
-    "manage_roles": ["admin"]
-  }
+  ]
 }
 ```
 
@@ -474,9 +471,17 @@ edge 자체를 page로 확장할 때 쓰는 본문이다.
 ]
 ```
 
-### `access`
+### Access control
 
-edge-level permission override이다.
+edge-level permission override는 edge JSON 안의 `access` field로 직접 저장하지 않는다. L.W.S. permission model은 account-first/capability 기반이므로, edge별 접근 제어도 permission edge로 표현한다.
+
+```text
+account.taewo --rel.can_read--> edge.01J000000001
+group.admin --rel.can_update_in--> scope.wiki
+account.taewo --rel.can_create_in--> collection.server-operations
+```
+
+PermissionService는 이 permission edge들을 해석해 SQLite permission projection을 만들고, runtime에서는 projection을 조회한다.
 
 ## 6. Validation notes
 
@@ -497,4 +502,5 @@ tags are tag node ids or accepted virtual tags
 props is object
 temporal has occurred_at, valid_from, valid_to
 audit has created_at, updated_at, created_by, updated_by
+access is not embedded in edge JSON; use permission edges instead
 ```

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lws.local/schemas/edge.schema.json",
+  "title": "L.W.S. Edge",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "object_kind",
+    "id",
+    "rev",
+    "source",
+    "target",
+    "type",
+    "title",
+    "detail_mode",
+    "visibility",
+    "status",
+    "tags",
+    "props",
+    "temporal",
+    "audit"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "object_kind": { "const": "edge" },
+    "id": { "type": "string", "minLength": 1 },
+    "rev": { "type": "integer", "minimum": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "target": { "type": "string", "minLength": 1 },
+    "type": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "detail_mode": { "enum": ["stub", "note", "page"] },
+    "visibility": { "enum": ["private", "public"] },
+    "status": { "enum": ["active", "draft", "stub", "archived", "deleted"] },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "props": { "type": "object" },
+    "temporal": {
+      "type": "object",
+      "required": ["occurred_at", "valid_from", "valid_to"]
+    },
+    "audit": {
+      "type": "object",
+      "required": ["created_at", "updated_at", "created_by", "updated_by"]
+    }
+  },
+  "not": {
+    "required": ["access"]
+  }
+}

@@ -68,8 +68,8 @@ Node JSON의 필수 shape는 다음이다.
   "audit": {
     "created_at": "2026-06-23T00:00:00+09:00",
     "updated_at": "2026-06-23T00:00:00+09:00",
-    "created_by": "user.admin",
-    "updated_by": "user.admin"
+    "created_by": "account.admin",
+    "updated_by": "account.admin"
   }
 }
 ```
@@ -156,11 +156,13 @@ collection.*
 tag.*
 type.*
 rel.*
+scope.*
 view.graph.*
 view.timeline.*
 setting.*
 template.*
-user.*
+account.*
+group.*
 ```
 
 namespace 의미:
@@ -178,11 +180,58 @@ namespace 의미:
 | `tag.*` | tag object. 문자열 tag가 아니라 node로 관리한다. | `tag.server` |
 | `type.*` | node type object. node의 `type` field가 참조한다. | `type.service` |
 | `rel.*` | relation type object. edge의 `type` field가 참조한다. | `rel.depends_on` |
+| `scope.*` | 권한이나 설정이 적용되는 범위 object | `scope.wiki` |
 | `view.graph.*` | graph view 설정을 담는 node | `view.graph.server-infra` |
 | `view.timeline.*` | timeline view 설정을 담는 node | `view.timeline.server-history` |
 | `setting.*` | wiki/app 동작 설정을 담는 node | `setting.wiki.behavior` |
 | `template.*` | node/edge 생성에 사용할 template object | `template.service-page` |
-| `user.*` | actor/user identity object | `user.admin` |
+| `account.*` | account identity object. 사람 계정과 reserved system account를 모두 포함한다. | `account.taewo`, `account.system` |
+| `group.*` | 여러 account를 묶는 permission group object | `group.admin` |
+
+permission 관련 namespace 상세:
+
+```text
+scope.*:
+  권한이 적용되는 범위를 나타내는 node이다.
+  특정 object 하나가 아니라 wiki 전체, system 영역, ontology 영역,
+  public publishing 영역, 특정 collection 하위 영역처럼 넓은 권한 대상을 표현할 때 사용한다.
+
+  예:
+    scope.wiki
+    scope.system
+    scope.ontology
+    scope.public
+
+account.*:
+  L.W.S.에서 행위 주체가 되는 account node이다.
+  로그인 가능한 사람 계정과 로그인 불가능한 reserved internal account를 모두 포함한다.
+  audit.created_by / audit.updated_by는 account.* node id를 참조한다.
+
+  예:
+    account.taewo
+    account.admin
+    account.system
+    account.migration
+
+group.*:
+  여러 account를 묶는 permission group node이다.
+  account는 rel.member_of edge로 group에 연결될 수 있고,
+  group은 rel.can_create_in, rel.can_update_in, rel.can_manage_in 같은 permission edge를 받을 수 있다.
+
+  예:
+    group.admin
+    group.maintainers
+```
+
+권한 관계 예:
+
+```text
+account.taewo --rel.member_of--> group.admin
+group.admin --rel.can_manage_in--> scope.system
+account.taewo --rel.can_create_in--> scope.wiki
+account.taewo --rel.can_update_in--> collection.server-operations
+account.taewo --rel.owns--> svc.caddy
+```
 
 예:
 
@@ -496,12 +545,14 @@ wiki object의 편집/생성 메타데이터이다.
 "audit": {
   "created_at": "2026-06-23T00:00:00+09:00",
   "updated_at": "2026-06-23T00:00:00+09:00",
-  "created_by": "user.admin",
-  "updated_by": "user.admin"
+  "created_by": "account.admin",
+  "updated_by": "account.admin"
 }
 ```
 
 `audit.created_at`은 이 object가 wiki에 생성된 시점이고, `temporal.occurred_at`은 object가 설명하는 사건의 실제 발생 시점이다. 둘은 반드시 분리한다.
+
+`audit.created_by`와 `audit.updated_by`는 반드시 `account.*` node id를 참조한다. 사람이 수행한 작업은 `account.taewo` 같은 로그인 계정을 사용하고, system/bootstrap/migration 같은 내부 작업은 raw string `"system"` 대신 reserved account인 `account.system`을 사용한다.
 
 ## 5. Optional fields
 
@@ -514,16 +565,21 @@ wiki object의 편집/생성 메타데이터이다.
   "content": {
     "format": "markdown",
     "body": "# Markdown body"
-  },
-  "access": {
-    "read_roles": ["viewer"],
-    "write_roles": ["editor"],
-    "manage_roles": ["curator", "admin"]
   }
 }
 ```
 
-optional fields는 core schema를 무겁게 만들지 않으면서 page content, alias, object-level permission override를 확장하기 위한 영역이다.
+optional fields는 core schema를 무겁게 만들지 않으면서 page content와 alias를 확장하기 위한 영역이다.
+
+object-level access는 node 안의 `access` field로 직접 저장하지 않는다. L.W.S. permission model은 account-first/capability 기반이므로, object별 접근 제어는 permission edge로 표현한다.
+
+```text
+account.taewo --rel.can_read--> node.private-note
+group.admin --rel.can_update_in--> scope.wiki
+account.taewo --rel.can_create_in--> collection.server-operations
+```
+
+PermissionService는 이 permission edge들을 해석해 SQLite permission projection을 만들고, runtime에서는 projection을 조회한다.
 
 ## 6. Validation notes
 
@@ -542,4 +598,5 @@ tags are tag node ids or accepted virtual tags
 props is object
 temporal has occurred_at, valid_from, valid_to
 audit has created_at, updated_at, created_by, updated_by
+access is not embedded in node JSON; use permission edges instead
 ```

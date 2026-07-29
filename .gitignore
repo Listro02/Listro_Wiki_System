@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+
+# Local runtime config and generated data
+.env
+.env.local
+.env.*.local
+storage/
+
+# Logs and caches
+*.log
+.turbo/
+.vercel/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

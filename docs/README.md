@@ -1,31 +1,60 @@
 # L.W.S. Design Docs
 
-이 폴더는 **L.W.S. - Listro Wiki System**의 구현 전에 합의해야 할 설계 기준을 정리한다.
+이 폴더는 **L.W.S. - Listro Wiki System**의 설계 기준과 구현 추적 문서를 모아 둔다.
 
-L.W.S.는 wiki 데이터를 담는 저장소가 아니라, 외부 `knowledge/wiki`와 `data/wiki`에 있는 JSON 기반 `node`/`edge` object를 안전하게 읽고, 수정하고, 연결하고, 검증하고, index로 다루는 app이다.
+L.W.S.는 단순한 wiki page editor가 아니라, configured storage root 아래의 JSON `node`/`edge` object를 source of truth로 삼는 graph-first knowledge system이다. SQLite는 source of truth가 아니라 재생성 가능한 read model/projection이며, frontend와 API route는 live storage를 직접 만지지 않는 것이 핵심 경계다.
 
-## 문서 구조
+## Project Snapshot
 
-| 문서 | 역할 |
+현재 구현은 backend core contract를 우선으로 진행되었다.
+
+구현된 주요 범위:
+
+- Next.js App Router + TypeScript backend/API skeleton
+- runtime env contract, public/secret config 분리, storage root safety
+- node/edge JSON schema와 semantic validation
+- safe ObjectStore, EventStore, Patch/History model
+- rev 기반 mutation과 restore flow
+- SQLite generated read model과 reindex
+- object/search/graph/backlinks/timeline/ontology API
+- projection-backed permission enforcement
+- admin validation/reindex/backup/recovery/materialization jobs
+- route-level service boundary와 API contract regression tests
+
+아직 제품 기능으로 남은 범위:
+
+- production-grade auth/session/token system
+- 실제 사용 가능한 frontend workbench
+- async/background job runner
+- backup retention/encryption/remote policy
+- deployment/runtime operation hardening
+
+## Document Map
+
+| Document | Role |
 | --- | --- |
-| [LWS_BACKEND_DESIGN.md](./LWS_BACKEND_DESIGN.md) | 외부 storage, schema, API, validation, event log, index, permission 설계 |
-| [LWS_FRONTEND_DESIGN.md](./LWS_FRONTEND_DESIGN.md) | app shell, 화면 정보 구조, editor workflow, graph/timeline UI, mock UI 기준 |
-| [LWS_NODE_MODEL.md](./LWS_NODE_MODEL.md) | node object 의미, required fields, optional fields, validation 기준 |
-| [LWS_EDGE_MODEL.md](./LWS_EDGE_MODEL.md) | edge object 의미, required fields, relation boundary, validation 기준 |
+| [LWS_BACKEND_DESIGN.md](./LWS_BACKEND_DESIGN.md) | storage root, schema, API, validation, event log, index, permission, admin/recovery까지 포함한 backend 기준 설계 |
+| [LWS_FRONTEND_DESIGN.md](./LWS_FRONTEND_DESIGN.md) | app shell, 화면 정보 구조, editor workflow, graph/timeline UI, thin workbench 방향 |
+| [LWS_NODE_MODEL.md](./LWS_NODE_MODEL.md) | node object shape, required/optional fields, node type/tag/ontology validation 기준 |
+| [LWS_EDGE_MODEL.md](./LWS_EDGE_MODEL.md) | edge object shape, relation type, source/target boundary, first-class relationship validation 기준 |
+| [LWS_PRECEDENT_RESEARCH.md](./LWS_PRECEDENT_RESEARCH.md) | node-centered wiki/knowledge system 선례 조사와 L.W.S. 설계 교훈 |
+| [implementation/](./implementation/README.md) | 실제 구현 진행 보고서, milestone 상태, API route inventory, 검증 명령 |
 
-## 고정된 설계 기준
+## Fixed Design Principles
 
-1. `Listro_Wiki_System` repo는 **app code only**이다.
-2. 실제 node JSON, edge JSON, event log, index, DB, backup, secret은 repo 밖에 둔다.
-3. source of truth는 외부 JSON 파일이다.
-4. 기본 object kind는 `node`와 `edge`이다.
-5. tag, type, relation type, graph view, timeline view, setting도 모두 `node`로 다룬다.
-6. 모든 쓰기 작업은 `rev` 기반 optimistic concurrency를 사용한다.
-7. 모든 변경은 외부 `data/wiki/events`에 JSONL event log로 남긴다.
-8. public object boundary는 backend validation으로 강제한다.
-9. 초기 구현은 실제 데이터 생성이 아니라 **안전한 interface와 mock 기반 UI**를 먼저 만든다.
+1. `Listro_Wiki_System` repo는 app code, schema, docs, tests를 담는다.
+2. 실제 knowledge/data/runtime/log/backup/secret은 repo 밖 configured storage root에 둔다.
+3. Source of truth는 node/edge JSON object와 event/patch/history record다.
+4. SQLite는 삭제 후 재생성 가능한 generated read model이다.
+5. 기본 object kind는 `node`와 `edge`다.
+6. tag, type, relation type, graph view, timeline view, setting, account, permission scope는 node로 표현할 수 있어야 한다.
+7. Edge는 node 사이의 first-class relationship object이며 자체 metadata, validation, history를 가진다.
+8. 모든 write는 `rev` 기반 optimistic concurrency를 사용한다.
+9. 모든 변경은 event log와 per-object history로 추적한다.
+10. Public/private/read/write/admin boundary는 backend service layer에서 fail-closed로 강제한다.
+11. Browser/frontend는 `/api/lws/*`만 사용하고 filesystem, SQLite, event log에 직접 접근하지 않는다.
 
-## 권장 기술 기준
+## Recommended Technical Baseline
 
 ```text
 Framework:
@@ -45,24 +74,14 @@ Timeline:
   vis-timeline or equivalent timeline layer
 
 Storage:
-  External JSON file storage as source of truth
-  SQLite as optional generated index/cache/search DB
+  Configured L.W.S. storage roots
+  JSON node/edge object files as source of truth
+  JSONL event/history streams
+  SQLite generated index/search/read model
 ```
 
-## 다음 산출물
+## Where To Continue
 
-설계 문서 이후에는 다음 파일을 우선 작성한다.
-
-```text
-.env.example
-.gitignore
-schemas/node.schema.json
-schemas/edge.schema.json
-schemas/event.schema.json
-schemas/storage-contract.schema.json
-src/modules/config/*
-src/modules/storage/*
-src/modules/validation/*
-src/app/api/lws/health/route.ts
-src/app/api/lws/status/route.ts
-```
+1. Backend 상태를 다시 잡을 때는 [implementation/README.md](./implementation/README.md)에서 구현 보고서 요약을 먼저 본다.
+2. Backend v1을 닫으려면 M7 completion gate 문서를 최신 테스트 결과에 맞게 정리한다.
+3. 다음 기능 개발은 read-only thin frontend workbench부터 시작하는 것이 가장 자연스럽다.

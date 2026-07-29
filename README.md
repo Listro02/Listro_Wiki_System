@@ -1,34 +1,103 @@
 # L.W.S. - Listro Wiki System
 
-아직 대강 개념만 잡고, Wiki DB를 구체적으로 설계하며 개발을 진행하지는 않은 상태입니다.
-아래의 내용은 지금까지의 구상과 논의로 AI를 통해 정리해달라고 둔 것이라 정확하지 않을 수 있음을 참고바랍니다.
+Korean: [README.ko.md](./README.ko.md)
 
-"모든 것은 node이다."를 기반으로 데이터를 바루는 DBMS를 만드는 것이 목표라고 할 수 있겠습니다.
+L.W.S. is still an early implementation, but the backend core contract has moved beyond pure concept work. The current repository contains the app code, schemas, validators, services, API routes, generated read-model code, tests, and docs. Real node JSON, edge JSON, event logs, indexes, runtime files, backups, and secrets live outside this repository.
 
----
+L.W.S. is a graph-first wiki system built around one core idea:
 
-L.W.S. is a graph-first wiki application for managing external JSON knowledge objects. The app repository contains code, schemas, validators, indexes, APIs, UI, scripts, and docs. Real node JSON, edge JSON, event logs, indexes, runtime files, backups, and secrets live outside this repository.
+> Everything meaningful is a node.
+
+A page is a node. A tag is a node. A type is a node. A relation type is a node. A graph view, a timeline view, a setting, an account, a permission, an import source, and even an event about something that happened in the system can be understood as a node.
+
+The implementation still stores both `node` and `edge` objects. Edges are first-class relationship records between nodes. But the philosophy is node-centered: whenever something needs an identity, title, explanation, history, evidence, permissions, or links of its own, L.W.S. should be able to treat it as node-like knowledge rather than as hidden metadata.
+
+## What L.W.S. Is
+
+L.W.S. is not just a wiki page editor. It is a server-backed knowledge graph interface for JSON knowledge objects stored under configured L.W.S. storage roots.
+
+Those storage roots live outside the application repository, but they are not an unspecified external service. They are explicit local or production filesystem roots such as `LWS_KNOWLEDGE_ROOT` and `LWS_DATA_ROOT`, owned and managed by the L.W.S. runtime.
+
+In that sense, L.W.S. can also be viewed as a domain-specific, DBMS-like system for node/edge knowledge. It normalizes knowledge into nodes and edges, preserves changes through event and patch history, and serves query/read models through generated indexes. It is not a general-purpose database engine; it is a wiki-facing knowledge object management system.
+
+The app provides:
+
+- safe access to configured L.W.S. storage roots
+- node and edge JSON validation
+- rev-based write contracts
+- append-only event history
+- public/private boundary checks
+- SQLite-generated read models for fast browsing, search, graph traversal, timeline views, backlinks, ontology views, and permission-aware reads
+- API and UI layers that never touch live storage directly from the browser
+
+The source of truth is JSON object files and event/patch history under the configured storage roots. SQLite is a disposable generated projection. If the index is missing or corrupt, it must be rebuildable from those knowledge files and event history.
+
+## Design Philosophy
+
+### Everything Meaningful Is A Node
+
+L.W.S. uses nodes as the primary way to give meaning to things.
+
+```text
+wiki page        -> node
+tag              -> node
+type             -> node
+relation type    -> node
+graph view       -> node
+timeline view    -> node
+account          -> node
+permission scope -> node
+import source    -> node
+event/log entry  -> node-like knowledge
+```
+
+This makes the system explainable. A concept is not only a label in code or a database enum. It can have a title, body, aliases, history, permissions, backlinks, temporal context, and relationships to other concepts.
+
+### Edges Connect Nodes, But Relationships Can Also Be Explained
+
+Edges describe relationships between nodes:
+
+```text
+app.lws --rel.depends_on--> svc.caddy
+account.taewo --rel.owns--> app.lws
+tag.backend --rel.classifies--> app.lws
+```
+
+An edge is stored as a first-class object because relationships often need their own metadata: summary, evidence, temporal range, visibility, audit fields, history, and permissions. When a relationship becomes important enough to discuss as knowledge, L.W.S. can surface it as node-like material without losing the simple node-to-node graph model.
+
+### Current State And History Are Separate
+
+Current `node` and `edge` JSON files represent the latest state.
+
+History is preserved separately through:
+
+- append-only JSONL event streams
+- per-object history links
+- patch and inverse patch files
+- hashes for integrity checks
+
+L.W.S. does not store full revision snapshots by default. It records what changed and why, then keeps the current object easy to read.
 
 ## Repository Boundary
 
-This repository is the app, not the wiki data store.
+This repository is the app, not the live wiki data store.
 
 Included:
 
 - Next.js App Router application
 - TypeScript shared object model
-- JSON Schemas for node, edge, event, and storage contracts
-- storage adapters and validators
-- UI routes and mock fixtures
-- API route handlers
-- operational docs and scripts
+- JSON schemas for node, edge, event, and storage contracts
+- storage adapters, validators, services, and API route handlers
+- UI routes, mock fixtures, scripts, and docs
 
 Excluded:
 
 - real `knowledge/wiki` node and edge files
-- real `data/wiki` event logs and indexes
-- real sqlite/search databases
-- runtime/log/cache/backup/secret files
+- real `data/wiki` event logs, patches, indexes, and SQLite databases
+- runtime, log, cache, backup, and secret files
+- private knowledge
+
+Local development storage is expected to live outside this repository, normally as a sibling `storage/` directory.
 
 ## Local Development
 
@@ -50,16 +119,33 @@ npm.cmd run dev
 npm.cmd run build
 ```
 
-## First Vertical Slice
+## Initial Implementation Scope
 
-The initial implementation provides:
+The first implementation prioritizes safety over feature breadth:
 
-- storage root resolution and path traversal protection
-- node/edge/event schemas and TypeScript types
-- basic validation and public/private boundary checks
-- rev-based object write contract
-- JSONL event append contract
-- API skeletons for health, status, objects, nodes, edges, graph, timeline, ontology, and admin
-- mock workbench UI for Home, Object Explorer, Node Page, Edge Page, Graph, Timeline, Ontology, and Admin
+- runtime config and path safety
+- storage doctor and explicit development storage bootstrap
+- node/edge schema validation
+- minimal fail-closed permission boundary
+- rev-based mutation contract
+- event and patch history preservation
+- SQLite read model generation
+- permission-aware read/query layer
+- admin jobs for validation, reindex, backup, and recovery
+- mock UI surfaces for exploring the model before live data is created
 
-Production authentication, graph databases, vector databases, server-wide git orchestration, and reverse proxy configuration are intentionally out of scope for v1.
+Out of scope for v1:
+
+- production-grade authentication
+- real-time collaborative editing
+- graph databases
+- vector databases and semantic search
+- server-wide git orchestration
+- deployment or reverse-proxy automation
+
+## Design Docs
+
+- [Backend Design](./docs/LWS_BACKEND_DESIGN.md)
+- [Frontend Design](./docs/LWS_FRONTEND_DESIGN.md)
+- [Node Model](./docs/LWS_NODE_MODEL.md)
+- [Edge Model](./docs/LWS_EDGE_MODEL.md)

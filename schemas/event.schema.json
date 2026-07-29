@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lws.local/schemas/event.schema.json",
+  "title": "L.W.S. Event",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_kind",
+    "event_type",
+    "object_kind",
+    "object_id",
+    "base_rev",
+    "next_rev",
+    "account_id",
+    "occurred_at",
+    "summary"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "event_kind": { "const": "event" },
+    "event_type": { "type": "string", "minLength": 1 },
+    "object_kind": { "enum": ["node", "edge"] },
+    "object_id": { "type": "string", "minLength": 1 },
+    "base_rev": { "type": "integer", "minimum": 0 },
+    "next_rev": { "type": "integer", "minimum": 1 },
+    "account_id": { "type": "string", "minLength": 1 },
+    "occurred_at": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 }
+  }
+}

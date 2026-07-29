@@ -2,7 +2,9 @@
 
 ## 1. 목적
 
-L.W.S. frontend는 외부 JSON knowledge graph를 다루는 technical workbench이다.
+L.W.S. frontend는 지정된 L.W.S. storage root 아래의 JSON knowledge graph를 다루는 technical workbench이다.
+
+여기서 storage root는 app repository 밖에 위치하지만, 불특정 외부 서비스가 아니라 backend config로 명시된 L.W.S. 관리 데이터 공간이다. frontend는 이 공간을 직접 읽거나 쓰지 않고, backend API와 service contract를 통해 node/edge knowledge object를 탐색하고 조작한다.
 
 UI의 목표는 예쁜 wiki landing page가 아니라, power user가 다음 작업을 빠르고 안전하게 수행하는 것이다.
 
@@ -618,12 +620,14 @@ Actions:
   Create Backup
   Check Public Boundary
 
-Roles:
-  viewer
-  editor
-  curator
-  architect
-  admin
+Accounts / Permissions:
+  accounts
+  account status
+  capabilities
+  object owners
+  permission edges
+  scope permissions
+  permission projection status
 ```
 
 초기 Admin action은 disabled 또는 mock success state로 시작해도 된다.
@@ -779,9 +783,9 @@ view node selector
 ### Phase 4 - Backend integration
 
 ```text
-GET objects
-GET node/edge
-PUT node/edge with base_rev
+GET objects list/read
+GET object by id
+PATCH node/edge with base_rev and patch
 POST create node/edge
 validation API
 status API
@@ -800,4 +804,3 @@ visual diff merge editor
 real database connection
 real server data generation
 ```
-

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lws.local/schemas/storage-contract.schema.json",
+  "title": "L.W.S. Storage Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "knowledge_root",
+    "data_root",
+    "runtime_root",
+    "log_root",
+    "backup_root"
+  ],
+  "properties": {
+    "knowledge_root": { "type": "string", "minLength": 1 },
+    "data_root": { "type": "string", "minLength": 1 },
+    "runtime_root": { "type": "string", "minLength": 1 },
+    "log_root": { "type": "string", "minLength": 1 },
+    "backup_root": { "type": "string", "minLength": 1 },
+    "sqlite_path": { "type": "string", "minLength": 1 }
+  }
+}
