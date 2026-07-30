@@ -70,6 +70,15 @@ fixture.nodeService.createNode({
     summary: "public m4 search phrase"
   })
 }, bootstrap);
+fixture.nodeService.createNode({
+  object: nodeFixture({
+    id: "note.owned-private",
+    title: "Owned Private Delta",
+    slug: "owned-private-delta",
+    type: "type.note",
+    summary: "delta owner search phrase"
+  })
+}, bootstrap);
 fixture.edgeService.createEdge({
   object: edgeFixture({
     id: "edge.m4.a-can-read-note",
@@ -117,11 +126,29 @@ fixture.edgeService.createEdge({
 }, bootstrap);
 fixture.edgeService.createEdge({
   object: edgeFixture({
+    id: "edge.m4.a-can-create-collection",
+    source: "account.a",
+    target: "collection.team",
+    type: "rel.can_create_in",
+    title: "A can create in collection"
+  })
+}, bootstrap);
+fixture.edgeService.createEdge({
+  object: edgeFixture({
     id: "edge.m4.a-can-read-type",
     source: "account.a",
     target: "type.secret",
     type: "rel.can_read",
     title: "A can read secret type"
+  })
+}, bootstrap);
+fixture.edgeService.createEdge({
+  object: edgeFixture({
+    id: "edge.m4.a-owns-note",
+    source: "account.a",
+    target: "note.owned-private",
+    type: "rel.owns",
+    title: "A owns private note"
   })
 }, bootstrap);
 
@@ -144,6 +171,56 @@ assertPermissionDenied(() => objectService.readObject("note.a-private", anonymou
 assert.equal(queryService.search({ q: "alpha", limit: 10 }, accountA).items.some((item: any) => item.id === "note.a-private"), true);
 assert.equal(queryService.search({ q: "alpha", limit: 10 }, accountB).items.length, 0);
 assert.equal(queryService.search({ q: "alpha", limit: 10 }, anonymous).items.length, 0);
+const listForA = queryService.listObjects({ limit: 100 }, accountA).items.map((item: any) => item.id);
+const listForB = queryService.listObjects({ limit: 100 }, accountB).items.map((item: any) => item.id);
+assert.equal(listForA.includes("note.a-private"), true);
+assert.equal(listForA.includes("note.owned-private"), true);
+assert.equal(listForA.includes("note.public-m4"), true);
+assert.equal(listForA.includes("note.group-private"), false);
+assert.equal(listForA.includes("note.collection-private"), false);
+assert.equal(listForB.includes("note.a-private"), false);
+assert.equal(listForB.includes("note.owned-private"), false);
+assert.equal(listForB.includes("note.public-m4"), true);
+assert.equal(queryService.search({ q: "delta", limit: 10 }, accountA).items.some((item: any) => item.id === "note.owned-private"), true);
+assert.equal(queryService.search({ q: "delta", limit: 10 }, accountB).items.length, 0);
+
+assert.equal(objectService.readObject("note.owned-private", accountA).object.id, "note.owned-private");
+assertPermissionDenied(() => objectService.readObject("note.owned-private", accountB));
+const ownerUpdate = fixture.nodeService.patchNode({
+  id: "note.owned-private",
+  base_rev: 1,
+  patch: [{ op: "replace", path: "/summary", value: "delta owner updated by owner" }]
+}, accountA);
+assert.equal(ownerUpdate.object.summary, "delta owner updated by owner");
+assertPermissionDenied(() =>
+  fixture.nodeService.patchNode({
+    id: "note.owned-private",
+    base_rev: ownerUpdate.next_rev,
+    patch: [{ op: "replace", path: "/summary", value: "b should not update owned note" }]
+  }, accountB)
+);
+
+const scopedCreate = fixture.nodeService.createNode({
+  object: nodeFixture({
+    id: "note.created-in-collection",
+    title: "Created In Collection",
+    slug: "created-in-collection",
+    type: "type.note"
+  }),
+  target_scope: "collection.team"
+}, accountA);
+assert.equal(scopedCreate.object.id, "note.created-in-collection");
+assertPermissionDenied(() =>
+  fixture.nodeService.createNode({
+    object: nodeFixture({
+      id: "note.b-create-denied",
+      title: "B Create Denied",
+      slug: "b-create-denied",
+      type: "type.note"
+    }),
+    target_scope: "collection.team"
+  }, accountB)
+);
 
 assertPermissionDenied(() => objectService.readObject("note.group-private", accountA));
 const membership = fixture.edgeService.createEdge({
@@ -255,6 +332,31 @@ const corruptAccountA = corrupt.permissionService.resolveContext({ accountId: "a
 assert.equal(new ObjectService(corrupt.objectStore, corrupt.permissionService).readObject("note.corrupt-private", corruptAccountA).object.id, "note.corrupt-private");
 fs.writeFileSync(corrupt.config.index.sqlitePath, "not a sqlite database", "utf8");
 assertPermissionDenied(() => new ObjectService(corrupt.objectStore, corrupt.permissionService).readObject("note.corrupt-private", corruptAccountA));
+
+const missing = createFixture("missing-permission");
+missing.nodeService.createNode({ object: nodeFixture({ id: "account.a", title: "Account A", slug: "account-a", type: "type.account" }) }, missing.bootstrap);
+missing.nodeService.createNode({ object: nodeFixture({ id: "note.missing-private", title: "Missing Private", slug: "missing-private", type: "type.note" }) }, missing.bootstrap);
+missing.edgeService.createEdge({
+  object: edgeFixture({
+    id: "edge.m4.missing-a-owns",
+    source: "account.a",
+    target: "note.missing-private",
+    type: "rel.owns",
+    title: "A owns before missing index"
+  })
+}, missing.bootstrap);
+new ReindexCommand(missing.objectStore, missing.validationService, missing.indexStore).run();
+const missingAccountA = missing.permissionService.resolveContext({ accountId: "account.a", authSource: "session" });
+assert.equal(new ObjectService(missing.objectStore, missing.permissionService).readObject("note.missing-private", missingAccountA).object.id, "note.missing-private");
+fs.unlinkSync(missing.config.index.sqlitePath);
+assertPermissionDenied(() => new ObjectService(missing.objectStore, missing.permissionService).readObject("note.missing-private", missingAccountA));
+assertPermissionDenied(() =>
+  missing.nodeService.patchNode({
+    id: "note.missing-private",
+    base_rev: 1,
+    patch: [{ op: "replace", path: "/summary", value: "missing projection should deny" }]
+  }, missingAccountA)
+);
 
 const spoofed = resolveHttpRequestContext(
   new Request("http://lws.local/api/lws/objects", {

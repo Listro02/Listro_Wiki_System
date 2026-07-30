@@ -38,6 +38,7 @@ L.W.S.는 단순한 wiki page editor가 아니라, configured storage root 아�
 | [LWS_NODE_MODEL.md](./LWS_NODE_MODEL.md) | node object shape, required/optional fields, node type/tag/ontology validation 기준 |
 | [LWS_EDGE_MODEL.md](./LWS_EDGE_MODEL.md) | edge object shape, relation type, source/target boundary, first-class relationship validation 기준 |
 | [LWS_PRECEDENT_RESEARCH.md](./LWS_PRECEDENT_RESEARCH.md) | node-centered wiki/knowledge system 선례 조사와 L.W.S. 설계 교훈 |
+| [reference/LWS_GLOSSARY.md](./reference/LWS_GLOSSARY.md) | source of truth, projection, read model, fail-closed, effective permission 같은 핵심 용어 기준 정의 |
 | [implementation/](./implementation/README.md) | 실제 구현 진행 보고서, milestone 상태, API route inventory, 검증 명령 |
 
 ## Fixed Design Principles
