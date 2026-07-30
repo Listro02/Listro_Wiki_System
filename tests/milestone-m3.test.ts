@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,7 +11,8 @@ import { objectIdToSafeSegment, PathResolver } from "../src/modules/storage/path
 import { ObjectStore } from "../src/modules/storage/object-store.ts";
 import { getStorageBootstrapPlan } from "../src/modules/storage/storage-doctor.ts";
 import { ValidationService } from "../src/modules/validation/validation-service.ts";
-import type { LwsNode } from "../src/shared/object-model.ts";
+import type { LwsEdge, LwsNode } from "../src/shared/object-model.ts";
+import { EdgeService } from "../src/services/edge-service.ts";
 import { HistoryService } from "../src/services/history-service.ts";
 import { MutationService } from "../src/services/mutation-service.ts";
 import { NodeService } from "../src/services/node-service.ts";
@@ -64,6 +65,11 @@ assert.equal(fullReindex.object_count, 2);
 assert.equal(countRows(full.indexStore, "objects"), 2);
 assert.equal(countRows(full.indexStore, "events"), 2);
 assert.equal(countRows(full.indexStore, "object_history"), 2);
+assert.equal(indexMeta(full.indexStore, "search_mode"), "fallback_like");
+assert.equal(indexMeta(full.indexStore, "last_reindex_status"), "succeeded");
+assert.equal(indexMeta(full.indexStore, "last_successful_build_id"), fullReindex.build_id);
+assert.equal(indexMeta(full.indexStore, "last_successful_build_id"), latestIndexBuildId(full.indexStore));
+assert.equal(indexMeta(full.indexStore, "last_reindex_warning_count"), "0");
 
 const anonymous = full.permissionService.resolveContext();
 const queryService = new ObjectQueryService(full.indexStore, full.permissionService);
@@ -72,6 +78,9 @@ assert.equal(publicSearch.items.some((item: any) => item.id === "note.public-m3"
 assert.equal(publicSearch.items.every((item: any) => item.viewer_permissions?.can_read === true), true);
 const privateSearch = queryService.search({ q: "secret", limit: 10, include_permissions: true }, anonymous);
 assert.equal(privateSearch.items.some((item: any) => item.id === "note.private-m3"), false);
+const anonymousList = queryService.listObjects({ limit: 10, include_permissions: true }, anonymous);
+assert.equal(anonymousList.items.some((item: any) => item.id === "note.private-m3"), false);
+assert.equal(anonymousList.items.some((item: any) => item.viewer_permissions?.can_read !== true), false);
 
 const historyService = new HistoryService(full.objectStore, full.eventStore, full.permissionService, full.indexStore);
 const projectedHistory = historyService.listHistory("note.public-m3", full.bootstrap);
@@ -88,15 +97,33 @@ const incrementalResult = incremental.nodeService.createNode(
       title: "Incremental M3",
       slug: "incremental-m3",
       type: "type.note",
-      visibility: "public"
+      visibility: "public",
+      tags: ["tag.incremental-m3"]
     })
   },
   incremental.bootstrap
 );
 assert.equal(incrementalResult.warnings.length, 0);
-assert.equal(countRows(incremental.indexStore, "objects"), 1);
-assert.equal(countRows(incremental.indexStore, "events"), 1);
-assert.equal(countRows(incremental.indexStore, "object_history"), 1);
+const incrementalEdgeResult = incremental.edgeService.createEdge(
+  {
+    object: edgeFixture({
+      id: "edge.incremental-m3",
+      source: "note.incremental-m3",
+      target: "note.incremental-m3",
+      title: "Incremental M3 self relation",
+      type: "rel.depends_on",
+      visibility: "public"
+    })
+  },
+  incremental.bootstrap
+);
+assert.equal(incrementalEdgeResult.warnings.length, 0);
+assert.equal(countRows(incremental.indexStore, "objects"), 2);
+assert.equal(countRows(incremental.indexStore, "object_tags"), 1);
+assert.equal(countRows(incremental.indexStore, "graph_edges"), 1);
+assert.equal(countRows(incremental.indexStore, "timeline_items"), 2);
+assert.equal(countRows(incremental.indexStore, "events"), 2);
+assert.equal(countRows(incremental.indexStore, "object_history"), 2);
 
 const stale = createFixture("projection-stale");
 new ReindexCommand(stale.objectStore, stale.validationService, stale.indexStore).run();
@@ -117,6 +144,7 @@ const staleResult = stale.nodeService.createNode(
 );
 assert.equal(staleResult.warnings.includes("INDEX_STALE"), true);
 assert.equal(stale.indexStore.getStatus().state, "INDEX_STALE");
+assert.equal(indexMeta(stale.indexStore, "index_stale_reason"), "incremental event/history projection update failed");
 
 const corrupt = createFixture("corrupt-history");
 const corruptA = corrupt.nodeService.createNode(
@@ -141,21 +169,52 @@ const corruptB = corrupt.nodeService.createNode(
   },
   corrupt.bootstrap
 );
+const corruptC = corrupt.nodeService.createNode(
+  {
+    object: nodeFixture({
+      id: "note.bad-byte-offset",
+      title: "Bad Byte Offset",
+      slug: "bad-byte-offset",
+      type: "type.note"
+    })
+  },
+  corrupt.bootstrap
+);
+const corruptD = corrupt.nodeService.createNode(
+  {
+    object: nodeFixture({
+      id: "note.bad-head-hash",
+      title: "Bad Head Hash",
+      slug: "bad-head-hash",
+      type: "type.note"
+    })
+  },
+  corrupt.bootstrap
+);
 const corruptHistoryPath = historyFilePath(corrupt.config, "node", "note.bad-event-ref");
 const corruptHistoryRow = JSON.parse(fs.readFileSync(corruptHistoryPath, "utf8").trim());
 fs.writeFileSync(corruptHistoryPath, `${JSON.stringify({ ...corruptHistoryRow, event_ref: "../../outside.jsonl" })}\n`, "utf8");
 fs.unlinkSync(patchRecordPath(corrupt.config, "node", "note.missing-patch", corruptB.event_id));
 fs.appendFileSync(historyFilePath(corrupt.config, "node", "note.missing-patch"), "{invalid-json\n", "utf8");
+const badOffsetHistoryPath = historyFilePath(corrupt.config, "node", "note.bad-byte-offset");
+const badOffsetHistoryRow = JSON.parse(fs.readFileSync(badOffsetHistoryPath, "utf8").trim());
+fs.writeFileSync(badOffsetHistoryPath, `${JSON.stringify({ ...badOffsetHistoryRow, byte_offset: 999999 })}\n`, "utf8");
+const badHeadPath = headFilePath(corrupt.config, "node", "note.bad-head-hash");
+const badHead = JSON.parse(fs.readFileSync(badHeadPath, "utf8"));
+fs.writeFileSync(badHeadPath, `${JSON.stringify({ ...badHead, latest_hash: "sha256:bad" }, null, 2)}\n`, "utf8");
 
 const corruptReindex = new ReindexCommand(corrupt.objectStore, corrupt.validationService, corrupt.indexStore).run();
-assert.equal(corruptReindex.warning_count >= 3, true);
+assert.equal(corruptReindex.warning_count >= 5, true);
 const issueCodes = validationIssueCodes(corrupt.indexStore);
 assert.equal(issueCodes.includes("EVENT_REF_INVALID"), true);
 assert.equal(issueCodes.includes("PATCH_PATH_MISSING"), true);
 assert.equal(issueCodes.includes("OBJECT_HISTORY_INVALID"), true);
-assert.equal(countRows(corrupt.indexStore, "events"), 2);
-assert.equal(countRows(corrupt.indexStore, "object_history"), 0);
+assert.equal(issueCodes.includes("EVENT_BYTE_OFFSET_INVALID"), true);
+assert.equal(issueCodes.includes("MUTATION_HASH_MISMATCH"), true);
+assert.equal(countRows(corrupt.indexStore, "events"), 4);
+assert.equal(countRows(corrupt.indexStore, "object_history"), 1);
 assert.equal(corruptA.event_id.startsWith("event."), true);
+assert.equal(corruptC.event_id.startsWith("event."), true);
 assert.equal(privateCreate.event_id.startsWith("event."), true);
 assert.equal(publicCreate.event_id.startsWith("event."), true);
 
@@ -202,9 +261,10 @@ function createFixture(label: string) {
     adminBootstrapAccount: config.auth.adminBootstrapAccount,
     indexStore
   });
-  const eventStore = new EventStore(config);
+  const eventStore = new EventStore(new PathResolver(config));
   const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore, indexStore);
   const nodeService = new NodeService(mutationService);
+  const edgeService = new EdgeService(mutationService);
   const bootstrap = permissionService.resolveContext({
     accountId: "account.admin",
     authSource: "local-script"
@@ -218,6 +278,7 @@ function createFixture(label: string) {
     permissionService,
     eventStore,
     nodeService,
+    edgeService,
     bootstrap
   };
 }
@@ -241,8 +302,34 @@ function validationIssueCodes(indexStore: IndexStore): string[] {
   }
 }
 
+function indexMeta(indexStore: IndexStore, key: string): string | null {
+  const db = indexStore.open();
+  try {
+    const row = db.prepare("SELECT value FROM index_meta WHERE key = ?").get(key) as { value: string } | undefined;
+    return row?.value ?? null;
+  } finally {
+    db.close();
+  }
+}
+
+function latestIndexBuildId(indexStore: IndexStore): string | null {
+  const db = indexStore.open();
+  try {
+    const row = db
+      .prepare("SELECT build_id FROM index_builds ORDER BY finished_at DESC, build_id DESC LIMIT 1")
+      .get() as { build_id: string } | undefined;
+    return row?.build_id ?? null;
+  } finally {
+    db.close();
+  }
+}
+
 function historyFilePath(config: RuntimeConfig, kind: "node" | "edge", objectId: string): string {
   return path.join(config.roots.data, "history", `${kind}s`, objectIdToSafeSegment(objectId), "events.jsonl");
+}
+
+function headFilePath(config: RuntimeConfig, kind: "node" | "edge", objectId: string): string {
+  return path.join(config.roots.data, "history", `${kind}s`, objectIdToSafeSegment(objectId), "head.json");
 }
 
 function patchRecordPath(config: RuntimeConfig, kind: "node" | "edge", objectId: string, eventId: string): string {
@@ -259,6 +346,36 @@ function nodeFixture(overrides: Partial<LwsNode>): LwsNode {
     slug: "placeholder",
     type: "type.note",
     detail_mode: "page",
+    visibility: "private",
+    status: "active",
+    tags: [],
+    props: {},
+    temporal: {
+      occurred_at: null,
+      valid_from: null,
+      valid_to: null
+    },
+    audit: {
+      created_at: "2026-07-03T00:00:00+09:00",
+      updated_at: "2026-07-03T00:00:00+09:00",
+      created_by: "account.admin",
+      updated_by: "account.admin"
+    },
+    ...overrides
+  };
+}
+
+function edgeFixture(overrides: Partial<LwsEdge>): LwsEdge {
+  return {
+    schema_version: 1,
+    object_kind: "edge",
+    id: "edge.placeholder",
+    rev: 1,
+    source: "node.placeholder",
+    target: "node.placeholder",
+    type: "rel.depends_on",
+    title: "Relation",
+    detail_mode: "note",
     visibility: "private",
     status: "active",
     tags: [],

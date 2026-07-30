@@ -52,6 +52,9 @@ npm.cmd run build
 | Document | Purpose | Read First When |
 | --- | --- | --- |
 | [LWS_BACKEND_IMPLEMENTATION_REPORT.md](./LWS_BACKEND_IMPLEMENTATION_REPORT.md) | Sprint A-G 기준으로 실제 구현된 backend vertical slice, 검증 명령, 남은 운영/프론트엔드 범위를 정리한다. | 지금 코드가 어떤 기능까지 갖췄는지 빠르게 복원할 때 |
+| [LWS_M1_SAFETY_BOUNDARY_IMPLEMENTATION_REPORT.md](./LWS_M1_SAFETY_BOUNDARY_IMPLEMENTATION_REPORT.md) | M1 Safety Boundary Closure 구현 결과, PathResolver 기반 EventStore 경로 통합, route-safe backend surface, 검증 결과를 정리한다. | M1에서 path/read/service boundary가 어떻게 닫혔는지 확인할 때 |
+| [LWS_M2_DURABLE_MUTATION_RECOVERY_IMPLEMENTATION_REPORT.md](./LWS_M2_DURABLE_MUTATION_RECOVERY_IMPLEMENTATION_REPORT.md) | M2 Durable Mutation And Idempotent Recovery 구현 결과, recovery classification, durable write policy, 검증 결과를 정리한다. | M2에서 mutation/recovery consistency가 어떻게 닫혔는지 확인할 때 |
+| [LWS_M3_SQLITE_PROJECTION_IMPLEMENTATION_REPORT.md](./LWS_M3_SQLITE_PROJECTION_IMPLEMENTATION_REPORT.md) | M3 SQLite Projection Completion 구현 결과, full reindex/event-history projection/search policy/index metadata 검증 결과를 정리한다. | M3에서 SQLite generated read model이 어떻게 재생성 가능하게 고정됐는지 확인할 때 |
 | [LWS_BACKEND_COMPLETION_REVIEW.md](./LWS_BACKEND_COMPLETION_REVIEW.md) | 설계 대비 구현 완료도를 평가하고, 당시 남아 있던 phase별 gap과 high-risk 항목을 정리한다. 현재는 일부 내용이 milestone 구현 전 기준이다. | 왜 M1-M6 작업이 필요했는지 배경을 볼 때 |
 | [LWS_BACKEND_COMPLETION_MILESTONES.md](./LWS_BACKEND_COMPLETION_MILESTONES.md) | M1-M7로 백엔드 완성 작업을 나누고, 각 milestone의 작업, 완료 조건, 필수 테스트를 정의한다. | 다음 작업 순서나 completion gate를 판단할 때 |
 | [LWS_API_ROUTE_INVENTORY.md](./LWS_API_ROUTE_INVENTORY.md) | `/api/lws/**` route가 어떤 service boundary와 permission guard를 통과해야 하는지 목록화한다. | route를 추가하거나 API contract를 점검할 때 |

@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -55,7 +55,7 @@ for (const directory of getStorageBootstrapPlan(config)) {
 const objectStore = new ObjectStore(new PathResolver(config));
 const validationService = new ValidationService(objectStore);
 const setupPermissionService = new PermissionService({ adminBootstrapAccount: config.auth.adminBootstrapAccount });
-const eventStore = new EventStore(config);
+const eventStore = new EventStore(new PathResolver(config));
 const setupMutationService = new MutationService(objectStore, validationService, setupPermissionService, eventStore);
 const setupNodeService = new NodeService(setupMutationService);
 const setupEdgeService = new EdgeService(setupMutationService);

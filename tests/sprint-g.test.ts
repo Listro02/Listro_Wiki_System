@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -67,7 +67,7 @@ const permissionService = new PermissionService({
   adminBootstrapAccount: config.auth.adminBootstrapAccount,
   indexStore
 });
-const eventStore = new EventStore(config);
+const eventStore = new EventStore(new PathResolver(config));
 const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore, indexStore);
 const nodeService = new NodeService(mutationService);
 const edgeService = new EdgeService(mutationService);

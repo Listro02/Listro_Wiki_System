@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { loadRuntimeConfig, type RuntimeConfig } from "../src/modules/config/runtime-config.ts";
+import { assertSafeEventId } from "../src/modules/events/event-id.ts";
 import { EventStore } from "../src/modules/events/event-store.ts";
 import type { ObjectHistoryLink } from "../src/modules/events/event-types.ts";
 import { IndexStore } from "../src/modules/indexing/index-store.ts";
@@ -13,6 +14,7 @@ import { getStorageBootstrapPlan } from "../src/modules/storage/storage-doctor.t
 import { ValidationService } from "../src/modules/validation/validation-service.ts";
 import { LwsError, type LwsErrorCode } from "../src/shared/errors.ts";
 import type { LwsNode } from "../src/shared/object-model.ts";
+import { createLwsBackend } from "../src/server/lws-backend.ts";
 import { GraphService } from "../src/services/graph-service.ts";
 import { HistoryService } from "../src/services/history-service.ts";
 import { MutationService } from "../src/services/mutation-service.ts";
@@ -31,7 +33,7 @@ const validationService = new ValidationService(objectStore);
 const permissionService = new PermissionService({
   adminBootstrapAccount: mainHarness.config.auth.adminBootstrapAccount
 });
-const eventStore = new EventStore(mainHarness.config);
+const eventStore = new EventStore(new PathResolver(mainHarness.config));
 const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore);
 const nodeService = new NodeService(mutationService);
 const objectService = new ObjectService(objectStore, permissionService, validationService, new IndexStore(mainHarness.config));
@@ -55,8 +57,24 @@ const createResult = nodeService.createNode(
   bootstrap
 );
 
+for (const unsafeEventId of [
+  "event.20260703.BAD/PATH",
+  "event.20260703.BAD\\PATH",
+  "../../event.20260703.BADPATH",
+  "C:\\event.20260703.BADPATH",
+  "\\\\server\\share\\event.20260703.BADPATH",
+  "event.20260703.lowercasebad",
+  "event.20260703.SHORT"
+]) {
+  assertLwsError(() => assertSafeEventId(unsafeEventId), "PATH_OUTSIDE_ROOT");
+}
+
+assertLwsError(() => eventStore.preparePendingMutation(commitInput({ event_id: "../event.20260703.BADPATH" })), "PATH_OUTSIDE_ROOT");
+assertLwsError(() => eventStore.commitMutation(commitInput({ occurred_at: "not-a-date" })), "PATH_OUTSIDE_ROOT");
+
 assertLwsError(() => objectService.validateObject("note.private-m1", anonymous), "PERMISSION_DENIED");
 assertRouteUsesServiceAdapter("objects/[id]/validation/route.ts", "backend.objectService.validateObject");
+assertRouteBackendSurfaceIsServiceOnly();
 
 assertLwsError(
   () =>
@@ -90,6 +108,8 @@ const maliciousHistoryRef: ObjectHistoryLink = {
   after_hash: "ignored"
 };
 assertLwsError(() => eventStore.readGlobalEvent(maliciousHistoryRef), "PATH_OUTSIDE_ROOT");
+assertLwsError(() => eventStore.readGlobalEvent({ ...maliciousHistoryRef, event_ref: path.resolve("outside.jsonl") }), "PATH_OUTSIDE_ROOT");
+assertLwsError(() => eventStore.readGlobalEvent({ ...maliciousHistoryRef, event_ref: "events/2026/07/03.jsonl/extra" }), "PATH_OUTSIDE_ROOT");
 
 assertServiceIndexError(mainHarness.config, anonymous, "INDEX_REBUILD_REQUIRED");
 
@@ -151,6 +171,13 @@ function assertRouteUsesServiceAdapter(relativePath: string, expectedCall: strin
   assert.equal(source.includes(expectedCall), true, `${relativePath} must call ${expectedCall}`);
 }
 
+function assertRouteBackendSurfaceIsServiceOnly(): void {
+  const backend = createLwsBackend() as Record<string, unknown>;
+  for (const forbidden of ["objectStore", "eventStore", "indexStore", "jobService", "permissionService", "pathResolver"]) {
+    assert.equal(Object.hasOwn(backend, forbidden), false, `route backend surface must not expose ${forbidden}`);
+  }
+}
+
 function listFiles(directory: string): string[] {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const absolutePath = path.join(directory, entry.name);
@@ -202,6 +229,26 @@ function setProcessEnv(env: Record<string, string>): void {
   for (const [key, value] of Object.entries(env)) {
     process.env[key] = value;
   }
+}
+
+function commitInput(overrides: Record<string, unknown> = {}) {
+  return {
+    event_id: eventStore.createEventId(),
+    event_type: "node.updated",
+    object_kind: "node",
+    object_id: "note.private-m1",
+    base_rev: 1,
+    next_rev: 2,
+    account_id: "account.admin",
+    occurred_at: new Date().toISOString(),
+    summary: "M1 path safety fixture",
+    changed_fields: ["title"],
+    patch: [{ op: "replace", path: "/title", value: "M1 Updated" }],
+    inverse_patch: [{ op: "replace", path: "/title", value: "Private M1 Note" }],
+    before_hash: null,
+    after_hash: "hash.after",
+    ...overrides
+  } as any;
 }
 
 function nodeFixture(overrides: Partial<LwsNode>): LwsNode {

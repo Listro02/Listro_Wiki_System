@@ -11,6 +11,7 @@ import type { StorageValidationJob, StorageValidationResult } from "../modules/a
 import type { PermissionService } from "./permission-service.ts";
 import type { JobRunOptions, JobService } from "./job-service.ts";
 import type { IndexStore } from "../modules/indexing/index-store.ts";
+import type { MutationRecoveryService } from "./mutation-recovery-service.ts";
 
 export type AdminJobOptions = {
   client_job_id?: string;
@@ -26,6 +27,7 @@ export class AdminService {
   private readonly coreOntologyMaterializer?: CoreOntologyMaterializer;
   private readonly backupWriter?: BackupWriter;
   private readonly indexStore?: IndexStore;
+  private readonly mutationRecoveryService?: MutationRecoveryService;
 
   constructor(options: {
     permissionService?: PermissionService;
@@ -37,6 +39,7 @@ export class AdminService {
     coreOntologyMaterializer?: CoreOntologyMaterializer;
     backupWriter?: BackupWriter;
     indexStore?: IndexStore;
+    mutationRecoveryService?: MutationRecoveryService;
   } = {}) {
     this.permissionService = options.permissionService;
     this.jobService = options.jobService;
@@ -47,6 +50,7 @@ export class AdminService {
     this.coreOntologyMaterializer = options.coreOntologyMaterializer;
     this.backupWriter = options.backupWriter;
     this.indexStore = options.indexStore;
+    this.mutationRecoveryService = options.mutationRecoveryService;
   }
 
   reindex(context: RequestContext, options: AdminJobOptions = {}) {
@@ -112,7 +116,7 @@ export class AdminService {
 
   getRecoveryReport(context: RequestContext) {
     this.requirePermissionService().assertCanManageIn(context, "scope.system");
-    const eventRecovery = this.requireEventStore().getRecoveryReport();
+    const eventRecovery = this.mutationRecoveryService?.getRecoveryReport() ?? this.requireEventStore().getRecoveryReport();
     const indexStatus = this.indexStore?.getStatus() ?? null;
     return {
       ...eventRecovery,
@@ -127,7 +131,7 @@ export class AdminService {
 
   repairFailedMutations(context: RequestContext) {
     this.requirePermissionService().assertCanManageIn(context, "scope.system");
-    return this.requireEventStore().repairAllMutations();
+    return this.mutationRecoveryService?.repairAllMutations() ?? this.requireEventStore().repairAllMutations();
   }
 
   listJobs(context: RequestContext) {

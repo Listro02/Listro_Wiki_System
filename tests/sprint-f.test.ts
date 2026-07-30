@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -60,7 +60,7 @@ const permissionService = new PermissionService({
   adminBootstrapAccount: config.auth.adminBootstrapAccount,
   indexStore
 });
-const eventStore = new EventStore(config);
+const eventStore = new EventStore(new PathResolver(config));
 const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore, indexStore);
 const nodeService = new NodeService(mutationService);
 const queryService = new ObjectQueryService(indexStore);
@@ -109,7 +109,7 @@ assert.equal(updateResult.warnings.length, 0);
 assert.equal(queryService.search({ q: "after incremental", limit: 10 }, permissionService.resolveContext()).items.length, 1);
 assert.equal(queryService.search({ q: "before incremental", limit: 10 }, permissionService.resolveContext()).items.length, 0);
 
-const failingEventStore = new EventStore(config, { simulateCommitFailure: true });
+const failingEventStore = new EventStore(new PathResolver(config), { simulateCommitFailure: true });
 const failingMutationService = new MutationService(objectStore, validationService, permissionService, failingEventStore, indexStore);
 const failingNodeService = new NodeService(failingMutationService);
 assert.throws(() =>

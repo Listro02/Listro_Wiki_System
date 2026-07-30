@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -52,7 +52,7 @@ for (const directory of getStorageBootstrapPlan(config)) {
 const objectStore = new ObjectStore(new PathResolver(config));
 const validationService = new ValidationService(objectStore);
 const permissionService = new PermissionService({ adminBootstrapAccount: config.auth.adminBootstrapAccount });
-const eventStore = new EventStore(config);
+const eventStore = new EventStore(new PathResolver(config));
 const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore);
 const nodeService = new NodeService(mutationService);
 const historyService = new HistoryService(objectStore, eventStore, permissionService);
@@ -146,7 +146,7 @@ assert.equal(restoreResult.next_rev, 4);
 assert.equal(historyService.listHistory("svc.caddy", context).length, 4);
 assert.equal(historyService.getHistoryDiff("svc.caddy", updateResult.event_id, context).event_id, updateResult.event_id);
 
-const failingEventStore = new EventStore(config, { simulateCommitFailure: true });
+const failingEventStore = new EventStore(new PathResolver(config), { simulateCommitFailure: true });
 const failingMutationService = new MutationService(
   objectStore,
   validationService,

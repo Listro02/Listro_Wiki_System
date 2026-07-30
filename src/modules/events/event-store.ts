@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { RuntimeConfig } from "../config/runtime-config.ts";
-import { assertInsideRoot, objectIdToSafeSegment } from "../storage/path-resolver.ts";
+import { PathResolver } from "../storage/path-resolver.ts";
 import { LwsError } from "../../shared/errors.ts";
 import type {
   CommitMutationInput,
@@ -31,11 +30,11 @@ type JsonLineRecord<T> = {
 };
 
 export class EventStore {
-  private readonly config: RuntimeConfig;
+  private readonly pathResolver: PathResolver;
   private readonly options: EventStoreOptions;
 
-  constructor(config: RuntimeConfig, options: EventStoreOptions = {}) {
-    this.config = config;
+  constructor(pathResolver: PathResolver, options: EventStoreOptions = {}) {
+    this.pathResolver = pathResolver;
     this.options = options;
   }
 
@@ -379,49 +378,47 @@ export class EventStore {
   private getObjectHistoryPaths(objectKind: "node" | "edge", objectId: string, eventId: string, occurredAt: string) {
     assertSafeEventId(eventId);
 
-    const date = occurredAt.slice(0, 10);
-    const [year, month, day] = date.split("-");
-    const globalEventRelativePath = toPosix(path.join("events", year, month, `${day}.jsonl`));
+    const date = eventLogDateFromOccurredAt(occurredAt);
+    const globalEventPath = this.pathResolver.resolveEventLogPath(date, "write");
+    const patchPath = this.pathResolver.resolveObjectPatchPath(objectKind, objectId, eventId, "write");
     const collectionPaths = this.getObjectHistoryCollectionPaths(objectKind, objectId);
-    const objectPatchRelativePath = toPosix(path.join("patches", `${eventId}.json`));
-    const globalPatchRelativePath = toPosix(path.join(collectionPaths.objectHistoryRoot, objectPatchRelativePath));
+    const objectPatchRelativePath = toPosix(path.posix.join("patches", `${eventId}.json`));
+    const globalPatchRelativePath = toPosix(patchPath.relativePath);
 
     return {
-      globalEventRelativePath,
-      globalEventAbsolutePath: this.resolveDataRelativePath(globalEventRelativePath, "write"),
+      globalEventRelativePath: toPosix(globalEventPath.relativePath),
+      globalEventAbsolutePath: globalEventPath.absolutePath,
       objectHistoryRelativePath: collectionPaths.objectHistoryRelativePath,
       objectHistoryAbsolutePath: collectionPaths.objectHistoryAbsolutePath,
       objectPatchRelativePath,
       globalPatchRelativePath,
-      patchAbsolutePath: this.resolveDataRelativePath(globalPatchRelativePath, "write"),
+      patchAbsolutePath: patchPath.absolutePath,
       headAbsolutePath: collectionPaths.headAbsolutePath
     };
   }
 
   private getObjectHistoryCollectionPaths(objectKind: "node" | "edge", objectId: string) {
-    const safeObjectId = objectIdToSafeSegment(objectId);
-    const objectHistoryRoot = path.join("history", `${objectKind}s`, safeObjectId);
-    const objectHistoryRelativePath = toPosix(path.join(objectHistoryRoot, "events.jsonl"));
-    const headRelativePath = toPosix(path.join(objectHistoryRoot, "head.json"));
+    const objectHistoryPath = this.pathResolver.resolveObjectHistoryPath(objectKind, objectId, "read");
+    const headPath = this.pathResolver.resolveObjectHistoryHeadPath(objectKind, objectId, "write");
+    const objectHistoryRelativePath = toPosix(objectHistoryPath.relativePath);
 
     return {
-      objectHistoryRoot: toPosix(objectHistoryRoot),
       objectHistoryRelativePath,
-      objectHistoryAbsolutePath: this.resolveDataRelativePath(objectHistoryRelativePath, "read"),
-      headAbsolutePath: this.resolveDataRelativePath(headRelativePath, "write")
+      objectHistoryAbsolutePath: objectHistoryPath.absolutePath,
+      headAbsolutePath: headPath.absolutePath
     };
   }
 
   private writeJournal(state: "pending" | "failed" | "committed", journal: PendingMutationJournal): void {
     assertSafeEventId(journal.event_id);
-    const directory = this.resolveRuntimeRelativePath(path.join("mutations", state), "write");
+    const directory = this.pathResolver.resolveMutationJournalDirectory(state, "write").absolutePath;
     fs.mkdirSync(directory, { recursive: true });
-    writeJsonFile(this.resolveRuntimeRelativePath(path.join("mutations", state, `${journal.event_id}.json`), "write"), journal);
+    writeJsonFile(this.pathResolver.resolveMutationJournalPath(state, journal.event_id, "write").absolutePath, journal);
   }
 
   private readJournal(state: "pending" | "failed" | "committed", eventId: string): PendingMutationJournal | null {
     assertSafeEventId(eventId);
-    const file = this.resolveRuntimeRelativePath(path.join("mutations", state, `${eventId}.json`), "read");
+    const file = this.pathResolver.resolveMutationJournalPath(state, eventId, "read").absolutePath;
     if (!fs.existsSync(file)) {
       return null;
     }
@@ -430,7 +427,7 @@ export class EventStore {
   }
 
   private readJournals(state: "pending" | "failed" | "committed"): PendingMutationJournal[] {
-    const directory = this.resolveRuntimeRelativePath(path.join("mutations", state), "read");
+    const directory = this.pathResolver.resolveMutationJournalDirectory(state, "read").absolutePath;
     if (!fs.existsSync(directory)) {
       return [];
     }
@@ -457,7 +454,7 @@ export class EventStore {
 
   private deleteJournal(state: "pending" | "failed" | "committed", eventId: string): void {
     assertSafeEventId(eventId);
-    const file = this.resolveRuntimeRelativePath(path.join("mutations", state, `${eventId}.json`), "write");
+    const file = this.pathResolver.resolveMutationJournalPath(state, eventId, "write").absolutePath;
     if (fs.existsSync(file)) {
       fs.unlinkSync(file);
     }
@@ -499,46 +496,7 @@ export class EventStore {
   }
 
   private resolveGlobalEventRef(eventRef: string): string {
-    if (!/^events\/\d{4}\/\d{2}\/\d{2}\.jsonl$/.test(eventRef)) {
-      throw new LwsError("PATH_OUTSIDE_ROOT", "History event reference is not safe for storage path resolution.", {
-        event_ref: eventRef
-      });
-    }
-
-    return this.resolveDataRelativePath(eventRef, "read");
-  }
-
-  private resolveDataRelativePath(relativePath: string, access: "read" | "write"): string {
-    return this.resolveRootRelativePath(this.config.roots.data, "data", relativePath, access);
-  }
-
-  private resolveRuntimeRelativePath(relativePath: string, access: "read" | "write"): string {
-    return this.resolveRootRelativePath(this.config.roots.runtime, "runtime", relativePath, access);
-  }
-
-  private resolveRootRelativePath(
-    root: string,
-    rootName: "data" | "runtime",
-    relativePath: string,
-    _access: "read" | "write"
-  ): string {
-    this.assertRootExists(root, rootName);
-    if (path.isAbsolute(relativePath) || relativePath.split(/[\\/]/).includes("..")) {
-      throw new LwsError("PATH_OUTSIDE_ROOT", "Resolved relative path attempted to escape its root.", {
-        root: rootName,
-        relative_path: relativePath
-      });
-    }
-
-    const absolutePath = path.resolve(root, relativePath);
-    assertInsideRoot(root, absolutePath);
-    return absolutePath;
-  }
-
-  private assertRootExists(root: string, name: string): void {
-    if (!fs.existsSync(root)) {
-      throw new LwsError("STORAGE_ROOT_MISSING", `${name} root does not exist.`, { root });
-    }
+    return this.pathResolver.resolveGlobalEventRef(eventRef, "read").absolutePath;
   }
 }
 
@@ -589,6 +547,17 @@ function readJsonLines<T>(filePath: string): T[] {
 
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function eventLogDateFromOccurredAt(occurredAt: string): string {
+  const date = occurredAt.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new LwsError("PATH_OUTSIDE_ROOT", "Event occurrence timestamp does not include a safe event log date.", {
+      occurred_at: occurredAt
+    });
+  }
+
+  return date;
 }
 
 function toPosix(candidate: string): string {

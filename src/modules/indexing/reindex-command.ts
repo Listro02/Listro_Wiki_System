@@ -3,8 +3,9 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { LwsError } from "../../shared/errors.ts";
-import type { LwsObject } from "../../shared/object-model.ts";
+import type { LwsObject, ObjectKind } from "../../shared/object-model.ts";
 import type { GlobalMutationEvent, ObjectHistoryLink } from "../events/event-types.ts";
+import { sha256Object } from "../hashing/object-hash.ts";
 import type { ObjectStore } from "../storage/object-store.ts";
 import type { ValidationService } from "../validation/validation-service.ts";
 import type { IndexStore } from "./index-store.ts";
@@ -129,6 +130,7 @@ export class ReindexCommand {
     job?.updateProgress({ phase: "history", warning_count: warningCount, message: "Rebuilding object history projection" });
     const historyProjection = this.rebuildObjectHistoryProjection(db, eventProjection.events, job);
     warningCount += historyProjection.warning_count;
+    warningCount += this.validateHistoryHeads(db, eventProjection.events, job);
 
     const finishedAt = new Date().toISOString();
     db.prepare(
@@ -141,6 +143,7 @@ export class ReindexCommand {
     db.prepare("INSERT OR REPLACE INTO index_meta (key, value) VALUES (?, ?)").run("last_successful_build_id", buildId);
     db.prepare("INSERT OR REPLACE INTO index_meta (key, value) VALUES (?, ?)").run("last_successful_build_finished_at", finishedAt);
     db.prepare("INSERT OR REPLACE INTO index_meta (key, value) VALUES (?, ?)").run("last_reindex_warning_count", String(warningCount));
+    db.prepare("INSERT OR REPLACE INTO index_meta (key, value) VALUES (?, ?)").run("search_mode", "fallback_like");
 
     return {
       build_id: buildId,
@@ -249,6 +252,137 @@ export class ReindexCommand {
     }
 
     return { warning_count: warningCount };
+  }
+
+  private validateHistoryHeads(
+    db: DatabaseSync,
+    events: Map<string, GlobalMutationEvent>,
+    job?: Pick<JobRunContext<ReindexResult>, "updateProgress" | "checkCanceled">
+  ): number {
+    let warningCount = 0;
+    const historyRoot = path.join(this.indexStore.getDataRoot(), "history");
+    for (const historyFilePath of listHistoryJsonlFiles(historyRoot)) {
+      job?.checkCanceled();
+      const objectKind = objectKindFromHistoryFile(historyRoot, historyFilePath);
+      const headPath = path.join(path.dirname(historyFilePath), "head.json");
+      if (!objectKind) {
+        continue;
+      }
+
+      if (!fs.existsSync(headPath)) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          null,
+          objectKind,
+          "MUTATION_HEAD_MISSING",
+          "Object history is missing head.json.",
+          headPath
+        );
+        continue;
+      }
+
+      let rawHead: unknown;
+      try {
+        rawHead = readJson(headPath);
+      } catch (error) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          null,
+          objectKind,
+          "MUTATION_HEAD_INVALID",
+          error instanceof Error ? error.message : String(error),
+          headPath
+        );
+        continue;
+      }
+
+      const head = parseObjectHistoryHead(rawHead);
+      if (!head.ok) {
+        warningCount += 1;
+        this.insertProjectionIssue(db, null, objectKind, "MUTATION_HEAD_INVALID", head.error, headPath);
+        continue;
+      }
+
+      if (head.value.object_kind !== objectKind) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          head.value.object_id,
+          head.value.object_kind,
+          "MUTATION_HEAD_KIND_MISMATCH",
+          "Object history head kind does not match its history directory.",
+          headPath
+        );
+      }
+
+      if (!events.has(head.value.latest_event_id)) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          head.value.object_id,
+          head.value.object_kind,
+          "MUTATION_HEAD_EVENT_MISSING",
+          "Object history head references a missing latest event.",
+          headPath
+        );
+      }
+
+      let object: LwsObject;
+      try {
+        object = this.objectStore.readObject(head.value.object_id);
+      } catch (error) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          head.value.object_id,
+          head.value.object_kind,
+          "MUTATION_OBJECT_MISSING",
+          "Object history head references a missing current object.",
+          headPath
+        );
+        continue;
+      }
+
+      if (object.object_kind !== head.value.object_kind) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          head.value.object_id,
+          head.value.object_kind,
+          "MUTATION_OBJECT_KIND_MISMATCH",
+          "Current object kind does not match its history head.",
+          headPath
+        );
+      }
+
+      if (object.rev !== head.value.current_rev) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          head.value.object_id,
+          head.value.object_kind,
+          "MUTATION_REV_MISMATCH",
+          "Current object rev does not match its history head.",
+          headPath
+        );
+      }
+
+      if (sha256Object(object) !== head.value.latest_hash) {
+        warningCount += 1;
+        this.insertProjectionIssue(
+          db,
+          head.value.object_id,
+          head.value.object_kind,
+          "MUTATION_HASH_MISMATCH",
+          "Current object hash does not match its history head.",
+          headPath
+        );
+      }
+    }
+
+    return warningCount;
   }
 
   private recoverCorruptIndexFile(): void {
@@ -400,11 +534,32 @@ function validateHistoryConsistency(
     };
   }
 
+  const byteOffsetIssue = validateEventByteOffset(findGlobalEventPath(dataRoot, event.occurred_at), history);
+  if (byteOffsetIssue) {
+    return byteOffsetIssue;
+  }
+
+  if (!/^patches\/event\.\d{8}\.[A-F0-9]{16}\.json$/.test(history.patch_path)) {
+    return {
+      code: "PATCH_PATH_INVALID",
+      message: "Object history patch_path is not a safe patch record reference.",
+      target: historyFilePath
+    };
+  }
+
   const patchPath = path.join(path.dirname(historyFilePath), history.patch_path);
   if (!fs.existsSync(patchPath)) {
     return {
       code: "PATCH_PATH_MISSING",
       message: "Object history patch_path does not point to an existing patch record.",
+      target: patchPath
+    };
+  }
+
+  if (event.patch_path !== toPosix(path.relative(dataRoot, patchPath))) {
+    return {
+      code: "PATCH_PATH_MISMATCH",
+      message: "Global event patch_path does not match the object history patch record.",
       target: patchPath
     };
   }
@@ -418,6 +573,129 @@ function validateHistoryConsistency(
   }
 
   return null;
+}
+
+function validateEventByteOffset(
+  eventFilePath: string,
+  history: ObjectHistoryLink
+): { code: string; message: string; target: string } | null {
+  if (!Number.isInteger(history.byte_offset) || history.byte_offset < 0) {
+    return {
+      code: "EVENT_BYTE_OFFSET_INVALID",
+      message: "Object history byte_offset must be a non-negative integer.",
+      target: eventFilePath
+    };
+  }
+
+  const eventLine = readGlobalEventAtByteOffset(eventFilePath, history.byte_offset);
+  if (!eventLine.ok) {
+    return {
+      code: "EVENT_BYTE_OFFSET_INVALID",
+      message: eventLine.error,
+      target: eventFilePath
+    };
+  }
+
+  if (eventLine.event_id !== history.event_id) {
+    return {
+      code: "EVENT_BYTE_OFFSET_INVALID",
+      message: "Object history byte_offset does not point to the referenced global event.",
+      target: eventFilePath
+    };
+  }
+
+  return null;
+}
+
+function readGlobalEventAtByteOffset(
+  filePath: string,
+  byteOffset: number
+): { ok: true; event_id: string } | { ok: false; error: string } {
+  if (!fs.existsSync(filePath)) {
+    return { ok: false, error: "Object history event_ref points to a missing global event file." };
+  }
+
+  const buffer = fs.readFileSync(filePath);
+  if (byteOffset >= buffer.length) {
+    return { ok: false, error: "Object history byte_offset is outside the global event file." };
+  }
+
+  const nextLineBreak = buffer.indexOf(0x0a, byteOffset);
+  const lineEnd = nextLineBreak === -1 ? buffer.length : nextLineBreak;
+  const line = buffer.subarray(byteOffset, lineEnd).toString("utf8").trim();
+  if (!line) {
+    return { ok: false, error: "Object history byte_offset points to an empty global event line." };
+  }
+
+  try {
+    const parsed = JSON.parse(line) as unknown;
+    if (!isRecord(parsed) || typeof parsed.event_id !== "string") {
+      return { ok: false, error: "Object history byte_offset points to a malformed global event line." };
+    }
+    return { ok: true, event_id: parsed.event_id };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+function objectKindFromHistoryFile(historyRoot: string, historyFilePath: string): ObjectKind | null {
+  const relativePath = toPosix(path.relative(historyRoot, historyFilePath));
+  if (relativePath.startsWith("nodes/")) {
+    return "node";
+  }
+  if (relativePath.startsWith("edges/")) {
+    return "edge";
+  }
+  return null;
+}
+
+function parseObjectHistoryHead(
+  value: unknown
+):
+  | {
+      ok: true;
+      value: {
+        object_kind: ObjectKind;
+        object_id: string;
+        current_rev: number;
+        latest_event_id: string;
+        latest_hash: string;
+      };
+    }
+  | { ok: false; error: string } {
+  if (!isRecord(value)) {
+    return { ok: false, error: "Object history head must be an object." };
+  }
+
+  if (value.object_kind !== "node" && value.object_kind !== "edge") {
+    return { ok: false, error: "Object history head object_kind must be node or edge." };
+  }
+  if (typeof value.object_id !== "string" || value.object_id.length === 0) {
+    return { ok: false, error: "Object history head object_id must be a non-empty string." };
+  }
+  if (typeof value.current_rev !== "number" || !Number.isInteger(value.current_rev) || value.current_rev < 1) {
+    return { ok: false, error: "Object history head current_rev must be a positive integer." };
+  }
+  if (typeof value.latest_event_id !== "string" || value.latest_event_id.length === 0) {
+    return { ok: false, error: "Object history head latest_event_id must be a non-empty string." };
+  }
+  if (typeof value.latest_hash !== "string" || value.latest_hash.length === 0) {
+    return { ok: false, error: "Object history head latest_hash must be a non-empty string." };
+  }
+
+  return {
+    ok: true,
+    value: {
+      object_kind: value.object_kind,
+      object_id: value.object_id,
+      current_rev: value.current_rev,
+      latest_event_id: value.latest_event_id,
+      latest_hash: value.latest_hash
+    }
+  };
 }
 
 function findGlobalEventPath(dataRoot: string, occurredAt: string): string {

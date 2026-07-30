@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { loadRuntimeConfig, type RuntimeConfig } from "../src/modules/config/runtime-config.ts";
 import { EventStore, type EventStoreOptions } from "../src/modules/events/event-store.ts";
-import { objectIdToSafeSegment } from "../src/modules/storage/path-resolver.ts";
+import { objectIdToSafeFilename, objectIdToSafeSegment } from "../src/modules/storage/path-resolver.ts";
 import { ObjectStore } from "../src/modules/storage/object-store.ts";
 import { PathResolver } from "../src/modules/storage/path-resolver.ts";
 import { checkStorage, getStorageBootstrapPlan } from "../src/modules/storage/storage-doctor.ts";
@@ -13,7 +13,9 @@ import { ValidationService } from "../src/modules/validation/validation-service.
 import { LwsError, type LwsErrorCode } from "../src/shared/errors.ts";
 import type { LwsNode } from "../src/shared/object-model.ts";
 import { HistoryService } from "../src/services/history-service.ts";
+import { AdminService } from "../src/services/admin-service.ts";
 import { MutationService } from "../src/services/mutation-service.ts";
+import { MutationRecoveryService } from "../src/services/mutation-recovery-service.ts";
 import { NodeService } from "../src/services/node-service.ts";
 import { PermissionService } from "../src/services/permission-service.ts";
 
@@ -49,7 +51,7 @@ for (const step of failureSteps) {
   assert.equal(failedJournal.steps?.[stepToJournalStep(step)]?.status, "failed");
 }
 
-for (const step of ["history_append", "head_write"] as const) {
+for (const step of failureSteps) {
   const fixture = createMutationFixture(`repair-${step}`);
   const objectId = `note.repair-${step.replaceAll("_", "-")}`;
   assertLwsError(
@@ -70,7 +72,11 @@ for (const step of ["history_append", "head_write"] as const) {
   );
 
   const eventId = fixture.failingEventStore.listIncompleteMutations()[0].event_id;
-  const repair = fixture.eventStore.repairAllMutations();
+  const report = fixture.adminService.getRecoveryReport(fixture.bootstrap);
+  assert.equal(report.recovery_items[0].repairable, true);
+  assert.equal(report.mutation_consistency_issues.some((issue) => issue.code === "EVENT_APPEND_FAILED"), true);
+
+  const repair = fixture.adminService.repairFailedMutations(fixture.bootstrap);
   assert.deepEqual(repair.manual_repair_required, []);
   assert.deepEqual(repair.repaired, [eventId]);
 
@@ -80,11 +86,88 @@ for (const step of ["history_append", "head_write"] as const) {
   assert.equal(countsAfterFirstRepair.patchExists, true);
   assert.equal(fixture.eventStore.listIncompleteMutations().length, 0);
 
-  const secondRepair = fixture.eventStore.repairAllMutations();
+  const secondRepair = fixture.adminService.repairFailedMutations(fixture.bootstrap);
   assert.deepEqual(secondRepair.repaired, []);
   assert.deepEqual(secondRepair.manual_repair_required, []);
   assert.deepEqual(countMutationRecords(fixture.config, objectId, eventId), countsAfterFirstRepair);
 }
+
+const objectHashMismatchFixture = createMutationFixture("repair-head_write");
+assertLwsError(
+  () =>
+    objectHashMismatchFixture.failingNodeService.createNode(
+      {
+        object: nodeFixture({
+          id: "note.repair-hash-mismatch",
+          title: "Repair Hash Mismatch",
+          slug: "repair-hash-mismatch",
+          type: "type.note",
+          visibility: "public"
+        })
+      },
+      objectHashMismatchFixture.bootstrap
+    ),
+  "EVENT_APPEND_FAILED"
+);
+const mismatchObjectPath = path.join(
+  objectHashMismatchFixture.config.roots.knowledge,
+  "nodes",
+  objectIdToSafeFilename("note.repair-hash-mismatch")
+);
+const mismatchObject = JSON.parse(fs.readFileSync(mismatchObjectPath, "utf8"));
+fs.writeFileSync(mismatchObjectPath, `${JSON.stringify({ ...mismatchObject, title: "Changed Outside Recovery" }, null, 2)}\n`, "utf8");
+const hashMismatchReport = objectHashMismatchFixture.recoveryService.getRecoveryReport();
+assert.equal(hashMismatchReport.recovery_items[0].repairable, false);
+assert.equal(hashMismatchReport.recovery_items[0].manual_repair_reason, "OBJECT_HASH_MISMATCH");
+assert.deepEqual(objectHashMismatchFixture.recoveryService.repairAllMutations().repaired, []);
+
+const objectMissingFixture = createMutationFixture("repair-head_write");
+assertLwsError(
+  () =>
+    objectMissingFixture.failingNodeService.createNode(
+      {
+        object: nodeFixture({
+          id: "note.repair-object-missing",
+          title: "Repair Object Missing",
+          slug: "repair-object-missing",
+          type: "type.note",
+          visibility: "public"
+        })
+      },
+      objectMissingFixture.bootstrap
+    ),
+  "EVENT_APPEND_FAILED"
+);
+fs.unlinkSync(path.join(objectMissingFixture.config.roots.knowledge, "nodes", objectIdToSafeFilename("note.repair-object-missing")));
+const objectMissingReport = objectMissingFixture.recoveryService.getRecoveryReport();
+assert.equal(objectMissingReport.recovery_items[0].repairable, false);
+assert.equal(objectMissingReport.recovery_items[0].manual_repair_reason, "OBJECT_MISSING");
+
+const conflictFixture = createMutationFixture("repair-head_write");
+assertLwsError(
+  () =>
+    conflictFixture.failingNodeService.createNode(
+      {
+        object: nodeFixture({
+          id: "note.repair-conflict",
+          title: "Repair Conflict",
+          slug: "repair-conflict",
+          type: "type.note",
+          visibility: "public"
+        })
+      },
+      conflictFixture.bootstrap
+    ),
+  "EVENT_APPEND_FAILED"
+);
+const conflictEventId = conflictFixture.failingEventStore.listIncompleteMutations()[0].event_id;
+const conflictPatchPath = patchRecordPath(conflictFixture.config, "node", "note.repair-conflict", conflictEventId);
+const conflictPatchRecord = JSON.parse(fs.readFileSync(conflictPatchPath, "utf8"));
+fs.writeFileSync(conflictPatchPath, `${JSON.stringify({ ...conflictPatchRecord, object_id: "note.other" }, null, 2)}\n`, "utf8");
+const conflictRepair = conflictFixture.recoveryService.repairAllMutations();
+assert.deepEqual(conflictRepair.repaired, []);
+assert.deepEqual(conflictRepair.manual_repair_required, [conflictEventId]);
+assert.equal(conflictRepair.recovery_items[0].manual_repair_reason, "COMMIT_STEP_CONFLICT");
 
 const missingHeadFixture = createMutationFixture("missing-head");
 const missingHeadResult = missingHeadFixture.nodeService.createNode(
@@ -250,10 +333,16 @@ function createMutationFixture(label: string) {
   const permissionService = new PermissionService({
     adminBootstrapAccount: config.auth.adminBootstrapAccount
   });
-  const eventStore = new EventStore(config);
+  const eventStore = new EventStore(new PathResolver(config));
+  const recoveryService = new MutationRecoveryService(objectStore, eventStore, config);
+  const adminService = new AdminService({
+    permissionService,
+    eventStore,
+    mutationRecoveryService: recoveryService
+  });
   const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore);
   const nodeService = new NodeService(mutationService);
-  const failingEventStore = new EventStore(config, {
+  const failingEventStore = new EventStore(new PathResolver(config), {
     failCommitStep: label.startsWith("fail-")
       ? (label.slice("fail-".length) as NonNullable<EventStoreOptions["failCommitStep"]>)
       : label.startsWith("repair-")
@@ -271,6 +360,8 @@ function createMutationFixture(label: string) {
   return {
     config,
     eventStore,
+    recoveryService,
+    adminService,
     failingEventStore,
     mutationService,
     nodeService,
@@ -281,7 +372,7 @@ function createMutationFixture(label: string) {
 }
 
 function countMutationRecords(config: RuntimeConfig, objectId: string, eventId: string) {
-  const eventStore = new EventStore(config);
+  const eventStore = new EventStore(new PathResolver(config));
   return {
     globalEvents: countEventIdInDirectory(path.join(config.roots.data, "events"), eventId),
     objectHistory: eventStore.listObjectHistory("node", objectId).filter((item) => item.event_id === eventId).length,

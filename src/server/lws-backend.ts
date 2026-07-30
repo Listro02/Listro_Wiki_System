@@ -17,6 +17,7 @@ import { GraphService } from "../services/graph-service.ts";
 import { HistoryService } from "../services/history-service.ts";
 import { JobService } from "../services/job-service.ts";
 import { MutationService } from "../services/mutation-service.ts";
+import { MutationRecoveryService } from "../services/mutation-recovery-service.ts";
 import { NodeService } from "../services/node-service.ts";
 import { ObjectQueryService } from "../services/object-query-service.ts";
 import { ObjectService } from "../services/object-service.ts";
@@ -25,11 +26,12 @@ import { PermissionService } from "../services/permission-service.ts";
 import { SessionService } from "../services/session-service.ts";
 import { TimelineService } from "../services/timeline-service.ts";
 
-export function createLwsBackend() {
+export function createLwsInternalBackend() {
   const config = loadRuntimeConfig();
-  const objectStore = new ObjectStore(new PathResolver(config));
+  const pathResolver = new PathResolver(config);
+  const objectStore = new ObjectStore(pathResolver);
   const validationService = new ValidationService(objectStore);
-  const eventStore = new EventStore(config);
+  const eventStore = new EventStore(pathResolver);
   const indexStore = new IndexStore(config);
   const jobStore = new JobStore(config);
   const jobService = new JobService(jobStore);
@@ -38,17 +40,20 @@ export function createLwsBackend() {
     indexStore
   });
   const mutationService = new MutationService(objectStore, validationService, permissionService, eventStore, indexStore);
+  const mutationRecoveryService = new MutationRecoveryService(objectStore, eventStore, config);
   const reindexCommand = new ReindexCommand(objectStore, validationService, indexStore);
   const coreOntologyMaterializer = new CoreOntologyMaterializer(objectStore, mutationService);
 
   return {
     config,
+    pathResolver,
     permissionService,
     resolveRequestContext: (request: Request) =>
       resolveHttpRequestContext(request, config, permissionService).context,
     objectStore,
     validationService,
     eventStore,
+    mutationRecoveryService,
     indexStore,
     objectService: new ObjectService(objectStore, permissionService, validationService, indexStore),
     objectQueryService: new ObjectQueryService(indexStore, permissionService),
@@ -69,9 +74,29 @@ export function createLwsBackend() {
       publicBoundaryChecker: new PublicBoundaryChecker(objectStore, validationService),
       coreOntologyMaterializer,
       backupWriter: new BackupWriter(config),
-      indexStore
+      indexStore,
+      mutationRecoveryService
     }),
     reindexCommand,
     mutationService
+  };
+}
+
+export function createLwsBackend() {
+  const backend = createLwsInternalBackend();
+  return {
+    config: backend.config,
+    resolveRequestContext: backend.resolveRequestContext,
+    objectService: backend.objectService,
+    objectQueryService: backend.objectQueryService,
+    nodeService: backend.nodeService,
+    edgeService: backend.edgeService,
+    graphService: backend.graphService,
+    historyService: backend.historyService,
+    timelineService: backend.timelineService,
+    ontologyService: backend.ontologyService,
+    sessionService: backend.sessionService,
+    adminService: backend.adminService,
+    mutationService: backend.mutationService
   };
 }

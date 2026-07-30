@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -64,7 +64,7 @@ const canceled = fixture.jobService.runSync(
 assert.equal(canceled.status, "canceled");
 assert.equal(fixture.jobService.getJob(canceled.job_id).status, "canceled");
 
-const failingEventStore = new EventStore(fixture.config, { simulateCommitFailure: true });
+const failingEventStore = new EventStore(new PathResolver(fixture.config), { simulateCommitFailure: true });
 const failingMutationService = new MutationService(
   fixture.objectStore,
   fixture.validationService,
@@ -175,7 +175,7 @@ function createFixture(label: string) {
     adminBootstrapAccount: config.auth.adminBootstrapAccount,
     indexStore
   });
-  const eventStore = new EventStore(config);
+  const eventStore = new EventStore(new PathResolver(config));
   const jobService = new JobService(new JobStore(config));
   const reindexCommand = new ReindexCommand(objectStore, validationService, indexStore);
   const adminService = new AdminService({
