@@ -35,6 +35,7 @@ npm.cmd run test:milestone-m3
 npm.cmd run test:milestone-m4
 npm.cmd run test:milestone-m5
 npm.cmd run test:milestone-m6
+npm.cmd run test:milestone-m7
 npm.cmd run build
 ```
 
@@ -58,6 +59,7 @@ npm.cmd run build
 | [LWS_M4_PERMISSION_ENFORCEMENT_IMPLEMENTATION_REPORT.md](./LWS_M4_PERMISSION_ENFORCEMENT_IMPLEMENTATION_REPORT.md) | M4 Permission Enforcement Completion 구현 결과, permission projection/effective permission/query boundary/fail-closed 검증 결과를 정리한다. | M4에서 projection-backed permission enforcement가 어떻게 닫혔는지 확인할 때 |
 | [LWS_M5_ADMIN_JOBS_OPERATIONAL_RECOVERY_IMPLEMENTATION_REPORT.md](./LWS_M5_ADMIN_JOBS_OPERATIONAL_RECOVERY_IMPLEMENTATION_REPORT.md) | M5 Admin Jobs And Operational Recovery 구현 결과, job lifecycle/idempotency/progress/audit/backup/recovery 검증 결과를 정리한다. | M5에서 admin job과 운영 복구 표면이 어떻게 고정됐는지 확인할 때 |
 | [LWS_M6_API_CONTRACT_INTEGRATION_HARDENING_IMPLEMENTATION_REPORT.md](./LWS_M6_API_CONTRACT_INTEGRATION_HARDENING_IMPLEMENTATION_REPORT.md) | M6 API Contract And Integration Hardening 구현 결과, route adapter boundary/request validation/error response/auth regression 검증 결과를 정리한다. | M6에서 `/api/lws/*` route contract가 어떻게 고정됐는지 확인할 때 |
+| [LWS_M7_BACKEND_V1_COMPLETION_GATE_REPORT.md](./LWS_M7_BACKEND_V1_COMPLETION_GATE_REPORT.md) | M7 Backend V1 Completion Gate 판정 결과, M1-M6 evidence, Phase 7 이후 분리 항목, 최종 regression 기준을 정리한다. | backend v1 core complete 여부를 최종 확인할 때 |
 | [LWS_GLOSSARY.md](../reference/LWS_GLOSSARY.md) | source of truth, projection, generated read model, fail-closed, effective permission 같은 핵심 용어를 정리한다. | 구현 보고서의 용어가 헷갈릴 때 |
 | [LWS_BACKEND_WARNING_AND_ERROR_CODES.md](../reference/LWS_BACKEND_WARNING_AND_ERROR_CODES.md) | API/service error code와 projection validation warning code의 의미, 저장 위치, 운영 대응을 정리한다. | `EVENT_*`, `INDEX_*`, `PATCH_PATH_*`, `MUTATION_*` code 의미를 확인할 때 |
 | [LWS_BACKEND_COMPLETION_REVIEW.md](./LWS_BACKEND_COMPLETION_REVIEW.md) | 설계 대비 구현 완료도를 평가하고, 당시 남아 있던 phase별 gap과 high-risk 항목을 정리한다. 현재는 일부 내용이 milestone 구현 전 기준이다. | 왜 M1-M6 작업이 필요했는지 배경을 볼 때 |
