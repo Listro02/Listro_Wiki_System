@@ -42,8 +42,36 @@ const firstReindex = fixture.adminService.reindex(fixture.bootstrap, { client_jo
 const secondReindex = fixture.adminService.reindex(fixture.bootstrap, { client_job_id: "m5.reindex.once" });
 assert.equal(firstReindex.job_id, secondReindex.job_id);
 assert.equal(firstReindex.status, "succeeded");
-assert.equal(fixture.jobService.getJob(firstReindex.job_id).progress.message, "Succeeded");
+const reindexAuditActions = firstReindex.audit.map((event) => event.action);
+assert.equal(reindexAuditActions[0], "created");
+assert.equal(reindexAuditActions[1], "running");
+assert.equal(reindexAuditActions.includes("progress"), true);
+assert.equal(reindexAuditActions.at(-1), "succeeded");
+const persistedReindex = fixture.jobService.getJob(firstReindex.job_id);
+assert.equal(persistedReindex.progress.message, "Succeeded");
+assert.equal(persistedReindex.progress.phase, "permissions");
 assert.equal(fixture.jobService.listAuditEvents().some((event) => event.job_id === firstReindex.job_id && event.action === "succeeded"), true);
+const sameClientDifferentType = fixture.adminService.backup(fixture.bootstrap, { client_job_id: "m5.reindex.once" });
+assert.notEqual(sameClientDifferentType.job_id, firstReindex.job_id);
+assert.equal(sameClientDifferentType.type, "backup");
+
+const failed = fixture.jobService.runSync(
+  "fail-fixture",
+  () => {
+    throw new LwsError("CONFIG_INVALID", "M5 deterministic failed job.");
+  },
+  {
+    clientJobId: "m5.fail.once",
+    actor: {
+      account_id: fixture.bootstrap.accountId,
+      auth_source: fixture.bootstrap.authSource,
+      request_id: fixture.bootstrap.requestId
+    }
+  }
+);
+assert.equal(failed.status, "failed");
+assert.equal(failed.error?.code, "CONFIG_INVALID");
+assert.equal(failed.audit.some((event) => event.action === "failed"), true);
 
 const canceled = fixture.jobService.runSync(
   "cancel-fixture",
@@ -63,6 +91,7 @@ const canceled = fixture.jobService.runSync(
 );
 assert.equal(canceled.status, "canceled");
 assert.equal(fixture.jobService.getJob(canceled.job_id).status, "canceled");
+assert.equal(canceled.audit.some((event) => event.action === "canceled"), true);
 
 const failingEventStore = new EventStore(new PathResolver(fixture.config), { simulateCommitFailure: true });
 const failingMutationService = new MutationService(
@@ -95,6 +124,9 @@ assert.equal(
   true
 );
 assert.equal(validationJob.progress.scanned_count === validationJob.result?.scanned_count, true);
+assert.equal(validationJob.progress.warning_count, validationJob.result?.issue_count);
+assert.equal(validationJob.progress.phase, "projection");
+assert.equal(validationJob.progress.message, "Succeeded");
 
 assert.throws(
   () => new BackupWriter(fixture.config).writeSnapshot({ backupId: "../escape" }),
@@ -107,9 +139,15 @@ assert.throws(
 
 const backupJob = fixture.adminService.backup(fixture.bootstrap, { client_job_id: "m5.backup.once" });
 assert.equal(backupJob.status, "succeeded");
+assert.equal(backupJob.progress.phase, "manifest");
+assert.equal(backupJob.progress.message, "Succeeded");
+assert.equal(path.relative(fixture.config.roots.backup, backupJob.result?.backup_path ?? "").startsWith(".."), false);
+assert.equal(path.isAbsolute(path.relative(fixture.config.roots.backup, backupJob.result?.backup_path ?? "")), false);
 const manifest = JSON.parse(fs.readFileSync(backupJob.result?.manifest_path ?? "", "utf8"));
 assert.equal(manifest.source_roots.knowledge, "<redacted>");
 assert.equal(manifest.source_roots.data, "<redacted>");
+assert.equal(fs.existsSync(path.join(backupJob.result?.backup_path ?? "", "knowledge")), true);
+assert.equal(fs.existsSync(path.join(backupJob.result?.backup_path ?? "", "data")), true);
 
 fs.mkdirSync(path.dirname(fixture.config.index.sqlitePath), { recursive: true });
 fs.writeFileSync(fixture.config.index.sqlitePath, "not a sqlite database", "utf8");
@@ -131,6 +169,14 @@ const spoofed = resolveHttpRequestContext(
 );
 assert.equal(spoofed.reason, "untrusted-session");
 assertPermissionDenied(() => fixture.adminService.reindex(spoofed.context));
+assertPermissionDenied(() => fixture.adminService.listJobs(spoofed.context));
+assertPermissionDenied(() => fixture.adminService.getJob(spoofed.context, firstReindex.job_id));
+assertPermissionDenied(() => fixture.adminService.cancelJob(spoofed.context, firstReindex.job_id));
+const anonymous = fixture.permissionService.resolveContext();
+assertPermissionDenied(() => fixture.adminService.reindex(anonymous));
+assertPermissionDenied(() => fixture.adminService.listJobs(anonymous));
+assertPermissionDenied(() => fixture.adminService.getJob(anonymous, firstReindex.job_id));
+assertPermissionDenied(() => fixture.adminService.cancelJob(anonymous, firstReindex.job_id));
 
 console.log("Milestone M5 admin jobs and operational recovery checks passed.");
 

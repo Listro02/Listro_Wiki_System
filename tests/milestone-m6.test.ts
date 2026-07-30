@@ -20,9 +20,20 @@ const searchRoute = await import("../src/app/api/lws/search/route.ts");
 const graphRoute = await import("../src/app/api/lws/graph/route.ts");
 const timelineRoute = await import("../src/app/api/lws/timeline/route.ts");
 const ontologyRoute = await import("../src/app/api/lws/ontology/route.ts");
+const backlinksRoute = await import("../src/app/api/lws/objects/[id]/backlinks/route.ts");
 const historyRoute = await import("../src/app/api/lws/objects/[id]/history/route.ts");
+const historyEventRoute = await import("../src/app/api/lws/objects/[id]/history/[eventId]/route.ts");
+const historyDiffRoute = await import("../src/app/api/lws/objects/[id]/history/[eventId]/diff/route.ts");
+const permissionsRoute = await import("../src/app/api/lws/objects/[id]/permissions/route.ts");
 const restoreRoute = await import("../src/app/api/lws/objects/[id]/restore/route.ts");
+const validationRoute = await import("../src/app/api/lws/objects/[id]/validation/route.ts");
+const adminBackupRoute = await import("../src/app/api/lws/admin/backup/route.ts");
+const adminJobsRoute = await import("../src/app/api/lws/admin/jobs/route.ts");
+const adminJobRoute = await import("../src/app/api/lws/admin/jobs/[jobId]/route.ts");
+const adminJobCancelRoute = await import("../src/app/api/lws/admin/jobs/[jobId]/cancel/route.ts");
 const adminReindexRoute = await import("../src/app/api/lws/admin/reindex/route.ts");
+const adminRecoveryRoute = await import("../src/app/api/lws/admin/recovery/route.ts");
+const adminValidateRoute = await import("../src/app/api/lws/admin/validate/route.ts");
 
 assertRouteBoundaryScan();
 
@@ -33,7 +44,8 @@ await assertErrorResponse(
     request("http://lws.local/api/lws/nodes/note.invalid", { method: "PATCH", body: "{" }),
     routeContext({ id: "note.invalid" })
   ),
-  "SCHEMA_INVALID"
+  "SCHEMA_INVALID",
+  422
 );
 await assertErrorResponse(
   await nodeByIdRoute.PATCH(
@@ -43,7 +55,8 @@ await assertErrorResponse(
     }),
     routeContext({ id: "note.invalid" })
   ),
-  "SCHEMA_INVALID"
+  "SCHEMA_INVALID",
+  422
 );
 await assertErrorResponse(
   await nodeByIdRoute.PATCH(
@@ -53,7 +66,8 @@ await assertErrorResponse(
     }),
     routeContext({ id: "note.invalid" })
   ),
-  "PATCH_INVALID"
+  "PATCH_INVALID",
+  400
 );
 await assertErrorResponse(
   await restoreRoute.POST(
@@ -63,7 +77,36 @@ await assertErrorResponse(
     }),
     routeContext({ id: "note.invalid" })
   ),
-  "PATH_OUTSIDE_ROOT"
+  "PATH_OUTSIDE_ROOT",
+  400
+);
+await assertErrorResponse(
+  await objectByIdRoute.GET(
+    request("http://lws.local/api/lws/objects/%"),
+    routeContext({ id: "%" })
+  ),
+  "SCHEMA_INVALID",
+  422
+);
+await assertErrorResponse(
+  await objectsRoute.GET(request("http://lws.local/api/lws/objects?limit=nan")),
+  "SCHEMA_INVALID",
+  422
+);
+await assertErrorResponse(
+  await objectsRoute.GET(request("http://lws.local/api/lws/objects?include_permissions=yes")),
+  "SCHEMA_INVALID",
+  422
+);
+await assertErrorResponse(
+  await objectsRoute.GET(request("http://lws.local/api/lws/objects?kind=folder")),
+  "SCHEMA_INVALID",
+  422
+);
+await assertErrorResponse(
+  await objectsRoute.GET(request("http://lws.local/api/lws/objects?visibility=secret")),
+  "SCHEMA_INVALID",
+  422
 );
 
 const privateFixture = createFixture("private-boundary");
@@ -128,14 +171,48 @@ await assertErrorResponse(
     request("http://lws.local/api/lws/objects/note.private-m6"),
     routeContext({ id: "note.private-m6" })
   ),
-  "PERMISSION_DENIED"
+  "PERMISSION_DENIED",
+  403
 );
 await assertErrorResponse(
   await historyRoute.GET(
     request("http://lws.local/api/lws/objects/note.private-m6/history"),
     routeContext({ id: "note.private-m6" })
   ),
-  "PERMISSION_DENIED"
+  "PERMISSION_DENIED",
+  403
+);
+await assertErrorResponse(
+  await historyEventRoute.GET(
+    request("http://lws.local/api/lws/objects/note.private-m6/history/event.20260703.ABCDEF1234567890"),
+    routeContext({ id: "note.private-m6", eventId: "event.20260703.ABCDEF1234567890" })
+  ),
+  "PERMISSION_DENIED",
+  403
+);
+await assertErrorResponse(
+  await historyDiffRoute.GET(
+    request("http://lws.local/api/lws/objects/note.private-m6/history/event.20260703.ABCDEF1234567890/diff"),
+    routeContext({ id: "note.private-m6", eventId: "event.20260703.ABCDEF1234567890" })
+  ),
+  "PERMISSION_DENIED",
+  403
+);
+await assertErrorResponse(
+  await permissionsRoute.GET(
+    request("http://lws.local/api/lws/objects/note.private-m6/permissions"),
+    routeContext({ id: "note.private-m6" })
+  ),
+  "PERMISSION_DENIED",
+  403
+);
+await assertErrorResponse(
+  await validationRoute.GET(
+    request("http://lws.local/api/lws/objects/note.private-m6/validation"),
+    routeContext({ id: "note.private-m6" })
+  ),
+  "PERMISSION_DENIED",
+  403
 );
 await assertErrorResponse(
   await objectByIdRoute.GET(
@@ -147,7 +224,8 @@ await assertErrorResponse(
     }),
     routeContext({ id: "note.private-m6" })
   ),
-  "PERMISSION_DENIED"
+  "PERMISSION_DENIED",
+  403
 );
 
 const objectList = await okBody(await objectsRoute.GET(request("http://lws.local/api/lws/objects?include_permissions=true")));
@@ -162,6 +240,13 @@ assert.equal(JSON.stringify(searchResult).includes("Private M6 Secret"), false);
 const graphResult = await okBody(await graphRoute.GET(request("http://lws.local/api/lws/graph")));
 assertPublicOnly(graphResult.data.nodes, "id");
 assert.equal(graphResult.data.edges.some((edge: any) => edge.edge_id === "edge.m6.private-ref"), false);
+const backlinksResult = await okBody(
+  await backlinksRoute.GET(
+    request("http://lws.local/api/lws/objects/note.private-m6/backlinks"),
+    routeContext({ id: "note.private-m6" })
+  )
+);
+assert.equal(backlinksResult.data.items.length, 0);
 
 const timelineResult = await okBody(await timelineRoute.GET(request("http://lws.local/api/lws/timeline")));
 assertPublicOnly(timelineResult.data.items, "object_id");
@@ -174,7 +259,8 @@ const missingIndexFixture = createFixture("missing-index");
 installEnv(missingIndexFixture.env);
 await assertErrorResponse(
   await searchRoute.GET(request("http://lws.local/api/lws/search?q=anything")),
-  "INDEX_REBUILD_REQUIRED"
+  "INDEX_REBUILD_REQUIRED",
+  503
 );
 
 const adminFixture = createFixture("admin");
@@ -186,7 +272,8 @@ await assertErrorResponse(
       body: JSON.stringify({ object: nodeFixture({ id: "note.admin-denied", slug: "admin-denied" }) })
     })
   ),
-  "PERMISSION_DENIED"
+  "PERMISSION_DENIED",
+  403
 );
 await assertErrorResponse(
   await adminReindexRoute.POST(
@@ -196,7 +283,19 @@ await assertErrorResponse(
       headers: { "x-lws-auth-source": "local-script", "x-lws-local-admin-secret": "wrong" }
     })
   ),
-  "PERMISSION_DENIED"
+  "PERMISSION_DENIED",
+  403
+);
+await assertErrorResponse(
+  await adminReindexRoute.POST(
+    request("http://lws.local/api/lws/admin/reindex", {
+      method: "POST",
+      body: JSON.stringify({ client_job_id: "../escape" }),
+      headers: localAdminHeaders()
+    })
+  ),
+  "SCHEMA_INVALID",
+  422
 );
 
 const mutationResponse = await nodesRoute.POST(
@@ -224,7 +323,11 @@ const adminReindex = await adminReindexRoute.POST(
   })
 );
 assert.equal(adminReindex.status, 200);
-assert.equal((await okBody(adminReindex)).data.job.status, "succeeded");
+const adminReindexBody = await okBody(adminReindex);
+assert.equal(adminReindexBody.data.job.status, "succeeded");
+const adminJobId = adminReindexBody.data.job.job_id;
+
+await assertAdminDeniedRoutes(adminJobId);
 
 const productionFixture = createFixture("production", { env: "production", sessionSecret: "prod-secret" });
 installEnv(productionFixture.env);
@@ -236,7 +339,8 @@ await assertErrorResponse(
       headers: { "x-lws-auth-source": "local-script", "x-lws-local-admin-secret": "prod-secret" }
     })
   ),
-  "PERMISSION_DENIED"
+  "PERMISSION_DENIED",
+  403
 );
 
 console.log("Milestone M6 API contract and integration hardening checks passed.");
@@ -356,12 +460,75 @@ async function okBody(response: Response): Promise<any> {
   return body;
 }
 
-async function assertErrorResponse(response: Response, code: string): Promise<void> {
+async function assertErrorResponse(response: Response, code: string, expectedStatus?: number): Promise<void> {
   const body = await response.json();
+  const expectedStatusByCode: Record<string, number> = {
+    SCHEMA_INVALID: 422,
+    PATCH_INVALID: 400,
+    PATH_OUTSIDE_ROOT: 400,
+    PERMISSION_DENIED: 403,
+    INDEX_REBUILD_REQUIRED: 503
+  };
+  assert.equal(response.status, expectedStatus ?? expectedStatusByCode[code] ?? response.status);
   assert.equal(body.ok, undefined);
   assert.equal(body.error.code, code);
   assert.equal(typeof body.error.message, "string");
+  if ("details" in body.error) {
+    assert.equal(typeof body.error.details === "object", true);
+  }
   assert.equal("stack" in body.error, false);
+}
+
+async function assertAdminDeniedRoutes(jobId: string): Promise<void> {
+  const contexts = [
+    {},
+    {
+      "x-lws-auth-source": "session",
+      "x-lws-account-id": "account.admin",
+      "x-lws-ui-capabilities": "system.manage"
+    }
+  ];
+
+  for (const headers of contexts) {
+    await assertErrorResponse(
+      await adminJobsRoute.GET(request("http://lws.local/api/lws/admin/jobs", { headers })),
+      "PERMISSION_DENIED",
+      403
+    );
+    await assertErrorResponse(
+      await adminJobRoute.GET(request(`http://lws.local/api/lws/admin/jobs/${jobId}`, { headers }), routeContext({ jobId })),
+      "PERMISSION_DENIED",
+      403
+    );
+    await assertErrorResponse(
+      await adminJobCancelRoute.POST(
+        request(`http://lws.local/api/lws/admin/jobs/${jobId}/cancel`, { method: "POST", headers }),
+        routeContext({ jobId })
+      ),
+      "PERMISSION_DENIED",
+      403
+    );
+    await assertErrorResponse(
+      await adminValidateRoute.POST(request("http://lws.local/api/lws/admin/validate", { method: "POST", headers })),
+      "PERMISSION_DENIED",
+      403
+    );
+    await assertErrorResponse(
+      await adminBackupRoute.POST(request("http://lws.local/api/lws/admin/backup", { method: "POST", headers })),
+      "PERMISSION_DENIED",
+      403
+    );
+    await assertErrorResponse(
+      await adminRecoveryRoute.GET(request("http://lws.local/api/lws/admin/recovery", { headers })),
+      "PERMISSION_DENIED",
+      403
+    );
+    await assertErrorResponse(
+      await adminReindexRoute.POST(request("http://lws.local/api/lws/admin/reindex", { method: "POST", headers })),
+      "PERMISSION_DENIED",
+      403
+    );
+  }
 }
 
 function assertPublicOnly(items: any[], key: "id" | "object_id"): void {
