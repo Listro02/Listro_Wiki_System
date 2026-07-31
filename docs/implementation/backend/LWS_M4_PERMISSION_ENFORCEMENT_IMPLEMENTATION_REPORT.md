@@ -8,7 +8,7 @@ M4는 Phase 5의 projection-backed real permission enforcement를 완료한다.
 
 핵심 계약은 모든 private read/write/query/admin 판단이 `RequestContext`만 신뢰하지 않고, source JSON/edge에서 재생성 가능한 SQLite permission projection을 통해 effective permission을 계산한다는 점이다.
 
-용어 기준은 [LWS_GLOSSARY.md](../reference/LWS_GLOSSARY.md)를 따른다.
+용어 기준은 [LWS_GLOSSARY.md](../../reference/LWS_GLOSSARY.md)를 따른다.
 
 ## 2. 구현 요약
 

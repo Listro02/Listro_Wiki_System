@@ -14,14 +14,18 @@ console.log("Milestone M7 backend v1 completion gate checks passed.");
 
 function assertRequiredDocuments(): void {
   const required = [
-    "docs/implementation/LWS_M1_SAFETY_BOUNDARY_IMPLEMENTATION_REPORT.md",
-    "docs/implementation/LWS_M2_DURABLE_MUTATION_RECOVERY_IMPLEMENTATION_REPORT.md",
-    "docs/implementation/LWS_M3_SQLITE_PROJECTION_IMPLEMENTATION_REPORT.md",
-    "docs/implementation/LWS_M4_PERMISSION_ENFORCEMENT_IMPLEMENTATION_REPORT.md",
-    "docs/implementation/LWS_M5_ADMIN_JOBS_OPERATIONAL_RECOVERY_IMPLEMENTATION_REPORT.md",
-    "docs/implementation/LWS_M6_API_CONTRACT_INTEGRATION_HARDENING_IMPLEMENTATION_REPORT.md",
-    "docs/implementation/LWS_M7_BACKEND_V1_COMPLETION_GATE_REPORT.md",
-    "docs/implementation/LWS_API_ROUTE_INVENTORY.md",
+    "docs/implementation/README.md",
+    "docs/implementation/backend/README.md",
+    "docs/implementation/backend/LWS_M1_SAFETY_BOUNDARY_IMPLEMENTATION_REPORT.md",
+    "docs/implementation/backend/LWS_M2_DURABLE_MUTATION_RECOVERY_IMPLEMENTATION_REPORT.md",
+    "docs/implementation/backend/LWS_M3_SQLITE_PROJECTION_IMPLEMENTATION_REPORT.md",
+    "docs/implementation/backend/LWS_M4_PERMISSION_ENFORCEMENT_IMPLEMENTATION_REPORT.md",
+    "docs/implementation/backend/LWS_M5_ADMIN_JOBS_OPERATIONAL_RECOVERY_IMPLEMENTATION_REPORT.md",
+    "docs/implementation/backend/LWS_M6_API_CONTRACT_INTEGRATION_HARDENING_IMPLEMENTATION_REPORT.md",
+    "docs/implementation/backend/LWS_M7_BACKEND_V1_COMPLETION_GATE_REPORT.md",
+    "docs/implementation/backend/LWS_API_ROUTE_INVENTORY.md",
+    "docs/implementation/frontend/README.md",
+    "docs/implementation/frontend/LWS_FRONTEND_IMPLEMENTATION_MILESTONES.md",
     "docs/reference/LWS_GLOSSARY.md",
     "docs/reference/LWS_BACKEND_WARNING_AND_ERROR_CODES.md"
   ];
@@ -32,7 +36,7 @@ function assertRequiredDocuments(): void {
 }
 
 function assertM7ReportGateCoverage(): void {
-  const report = read("docs/implementation/LWS_M7_BACKEND_V1_COMPLETION_GATE_REPORT.md");
+  const report = read("docs/implementation/backend/LWS_M7_BACKEND_V1_COMPLETION_GATE_REPORT.md");
   const expectedNeedles = [
     "Backend V1 Completion Gate",
     "V1 gate result: Pass",

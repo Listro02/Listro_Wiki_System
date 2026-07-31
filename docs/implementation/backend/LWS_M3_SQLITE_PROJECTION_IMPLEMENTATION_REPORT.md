@@ -66,7 +66,7 @@ list/search는 `openReady()`를 통과한 SQLite projection에서 동작한다. 
 
 M3 reindex consistency check는 다음 문제를 warning issue로 남긴다.
 
-전체 backend error/warning code의 canonical reference는 [LWS_BACKEND_WARNING_AND_ERROR_CODES.md](../reference/LWS_BACKEND_WARNING_AND_ERROR_CODES.md)를 따른다.
+전체 backend error/warning code의 canonical reference는 [LWS_BACKEND_WARNING_AND_ERROR_CODES.md](../../reference/LWS_BACKEND_WARNING_AND_ERROR_CODES.md)를 따른다.
 
 | Code | 의미 |
 | --- | --- |

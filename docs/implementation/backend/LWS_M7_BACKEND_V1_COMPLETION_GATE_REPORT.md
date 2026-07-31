@@ -100,7 +100,45 @@ flowchart LR
 | advanced permission administration UI | account/group/scope permission을 편집하는 관리 UI | M4는 backend enforcement를 닫는다. UI workflow는 frontend/application layer 범위다. |
 | visual diff merge editor | conflict와 patch diff를 시각적으로 병합하는 편집기 | v1은 diff/restore/rev conflict backend contract를 제공한다. Merge UX는 이후 editor feature다. |
 
-## 6. Gate Test
+## 6. Objective Review And Production Readiness Limits
+
+M7의 `Pass` 판정은 "L.W.S. backend v1 core baseline이 구현되었다"는 의미다. 이것은 production 운영에 필요한 모든 보안, 동시성, 장애 복구, 관측성, 성능 요구가 완료되었다는 뜻은 아니다.
+
+현재 코드와 regression 결과를 기준으로 확인된 구현 상태는 다음과 같다.
+
+| Area | Current state | Evidence |
+| --- | --- | --- |
+| Path and route boundary | 구현됨. `PathResolver`가 object/event/history/journal 경로를 root 내부로 제한하고 route surface는 raw store를 노출하지 않는다. | `src/modules/storage/path-resolver.ts`, `src/server/lws-backend.ts`, `test:milestone-m1`, `test:milestone-m6` |
+| Durable mutation baseline | 구현됨. pending journal, object write, patch/global event/object history/head commit step, idempotent repair classification이 있다. | `src/modules/events/event-store.ts`, `src/services/mutation-service.ts`, `src/services/mutation-recovery-service.ts`, `test:milestone-m2` |
+| SQLite generated projection | 구현됨. source object, global event log, object history에서 objects/events/history/permission projection을 rebuild한다. | `src/modules/indexing/reindex-command.ts`, `src/modules/indexing/index-store.ts`, `test:milestone-m3` |
+| Permission enforcement | 구현됨. anonymous public-only read, account/group/owner/scope permission projection, query visible predicate, stale/corrupt projection fail-closed가 있다. | `src/services/permission-service.ts`, `test:milestone-m4` |
+| Admin job baseline | 구현됨. permission-guarded job envelope, progress, cancellation signal, `client_job_id` idempotency, audit JSONL이 있다. | `src/services/admin-service.ts`, `src/services/job-service.ts`, `src/modules/jobs/job-store.ts`, `test:milestone-m5` |
+| API contract | 구현됨. route handler는 request parsing, context resolution, service call, response mapping 역할로 제한된다. | `src/app/api/lws/**/route.ts`, `test:milestone-m6`, `test:milestone-m7` |
+
+운영 수준으로 올리기 위해 남아 있는 주요 한계는 다음과 같다.
+
+| Gap | Why it matters | Required next work |
+| --- | --- | --- |
+| Production-grade authentication | 현재 production-grade session/token verification은 v1 범위 밖이다. `session` auth header는 untrusted로 취급되고, local-admin shortcut은 development/local mode에서만 허용된다. | login/session/token verification, secure cookie, session expiry/rotation, CSRF policy, account disable handling을 별도 milestone으로 구현한다. |
+| Per-object concurrency control | 현재 rev conflict check는 있지만, 같은 object에 대한 고동시성 mutation에서 read-check-write 구간을 원자적으로 보호하는 per-object lock/CAS 보장은 명시적으로 닫혀 있지 않다. | object id별 mutex, filesystem lock, SQLite-backed CAS, 또는 mutation queue 중 하나를 선택해 같은 object의 concurrent write를 serialize하거나 deterministic `REV_CONFLICT`로 만든다. |
+| Crash and filesystem durability hardening | atomic rename과 file fsync baseline은 있으나, OS/filesystem별 directory fsync 제약, process crash, partial temp file cleanup, disk full 같은 운영 장애는 더 넓은 검증이 필요하다. | crash-injection test, temp/journal cleanup, disk-full/error-path fixture, Windows filesystem behavior audit, backup 중 mutation 충돌 정책을 추가한다. |
+| True asynchronous job execution | M5 runner는 synchronous baseline이다. envelope shape는 있지만 별도 worker, queue, retry, lease, crashed worker recovery는 없다. | persistent job queue, worker process, retry/timeout policy, job lease, canceled/running recovery, progress streaming 또는 polling contract를 구현한다. |
+| Backup and restore operations | backup snapshot은 baseline이다. retention, encryption, remote/offsite copy, restore drill, backup consistency guarantee는 후속 운영 정책이다. | retention/encryption/remote copy, backup integrity manifest, restore command, scheduled backup, restore rehearsal test를 추가한다. |
+| Observability and alerting | job/status/report는 baseline이지만 production incident를 감지하고 추적하기 위한 metrics/log/alert 체계는 부족하다. | structured request log, mutation/admin audit query, metrics, slow query/job duration tracking, alert rules, recovery dashboard를 추가한다. |
+| Security hardening | path/id guard는 구현됐지만 public internet 운영에는 rate limit, body size limit, CORS/CSRF, secret management, detailed error exposure policy가 필요하다. | request size/rate limits, CORS/CSRF policy, secret loading hardening, fuzzing, dependency/security scan, admin endpoint network/access policy를 추가한다. |
+| Schema migration | v1은 schema mismatch detection과 reindex contract를 제공하지만 automatic migration/rollback runner는 없다. | dry-run migration report, migration apply/rollback, compatibility test, data backup preflight를 구현한다. |
+| Search and query performance | v1 search policy는 `fallback_like`다. 작은 데이터에는 충분하지만 규모가 커지면 FTS5 또는 다른 index 전략이 필요하다. | FTS5/tokenizer/ranking/highlight, permission-aware query plan review, pagination/load tests, reindex time budget을 검증한다. |
+| Load and fault testing | 현재 tests는 기능 회귀 중심이다. 운영 신뢰성은 동시 요청, large dataset, corrupt JSONL, interrupted mutation, SQLite corruption fixture가 더 필요하다. | concurrency/load test, fault-injection suite, large fixture benchmark, recovery repeated-run idempotency test를 CI에 추가한다. |
+
+따라서 다음 단계의 우선순위는 기능 확장보다 production readiness hardening이어야 한다.
+
+1. per-object mutation lock/CAS로 source of truth write race를 먼저 닫는다.
+2. production authentication/session milestone을 분리해 실제 사용자 경계를 닫는다.
+3. crash/fault-injection test와 restore drill을 추가해 durable mutation/recovery를 운영 장애 조건에서 검증한다.
+4. synchronous admin job baseline을 persistent async worker/queue 구조로 확장한다.
+5. observability, backup retention/encryption, migration runner, search performance를 Phase 7+ workstream으로 순차 진행한다.
+
+## 7. Gate Test
 
 M7은 `tests/milestone-m7.test.ts`를 추가한다.
 
@@ -109,11 +147,11 @@ M7은 `tests/milestone-m7.test.ts`를 추가한다.
 - M1-M7 implementation reports 존재
 - API route inventory 존재
 - glossary와 warning/error code reference 존재
-- M7 보고서가 checklist, evidence, Phase 7 deferred scope, Mermaid diagram을 포함
+- M7 보고서가 checklist, evidence, Phase 7 deferred scope, production readiness limits, Mermaid diagram을 포함
 - `/api/lws/**/route.ts`가 raw store, raw job internals, `fs`, raw `request.json()`, ad hoc `Number()`, direct `decodeURIComponent()`를 사용하지 않음
 - `package.json`에 `test:milestone-m7` 존재
 
-## 7. Verification
+## 8. Verification
 
 M7 단독 검증:
 
@@ -147,8 +185,10 @@ Result: Passed.
 
 `npm.cmd run build`는 성공했으며 기존 Turbopack NFT tracing warning 1건을 출력했다. 이 warning은 현재 build failure가 아니며 M7 gate failure 조건으로 보지 않는다.
 
-## 8. Conclusion
+## 9. Conclusion
 
 M7은 backend v1 core를 complete로 판정한다.
 
-이 판정은 Phase 7 이후 확장 항목이 불필요하다는 뜻이 아니다. 의미는 더 좁다. L.W.S. backend는 현재 source of truth, generated read model, permission boundary, durable mutation, operational recovery, API adapter contract를 v1 baseline으로 제공하며, 이후 작업은 이 baseline을 깨지 않는 방향으로 성능, 검색, migration, UI, observability를 확장해야 한다.
+이 판정은 Phase 7 이후 확장 항목이 불필요하다는 뜻이 아니다. 의미는 더 좁다. L.W.S. backend는 현재 source of truth, generated read model, permission boundary, durable mutation, operational recovery, API adapter contract를 v1 baseline으로 제공한다.
+
+Production readiness는 별도 gate로 보아야 한다. 이후 작업은 이 baseline을 깨지 않는 방향으로 authentication, per-object concurrency control, crash recovery, async jobs, backup/restore policy, observability, security hardening, migration, search performance를 단계적으로 닫아야 한다.

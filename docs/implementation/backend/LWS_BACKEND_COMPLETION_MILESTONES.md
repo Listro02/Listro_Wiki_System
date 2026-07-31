@@ -11,7 +11,7 @@
 - `docs/LWS_BACKEND_DESIGN.md`
 - `docs/LWS_NODE_MODEL.md`
 - `docs/LWS_EDGE_MODEL.md`
-- `docs/implementation/LWS_BACKEND_COMPLETION_REVIEW.md`
+- `docs/implementation/backend/LWS_BACKEND_COMPLETION_REVIEW.md`
 
 이 문서의 목적은 "무엇을 더 만들 것인가"보다 "어떤 순서로 만들어야 source of truth를 손상시키지 않는가"를 정리하는 것이다.
 
