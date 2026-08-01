@@ -36,7 +36,63 @@ flowchart LR
 
 Do not treat later milestones as rejected scope. They are deferred so the early workbench can be used with real data before deeper operational workflows are locked in.
 
-## 3. Milestones
+## 3. Implementation Slices
+
+Milestones define the main concern for each stage. They should not be implemented as isolated rooms. L.W.S. frontend screens share object selection, permission hints, index state, editor state, graph context, and admin recovery affordances, so each implementation pass should be a vertical slice through the user workflow.
+
+Core rule:
+
+```text
+vertical slice first
+then deepen by milestone
+```
+
+Recommended slices:
+
+```text
+Foundation Slice:
+  F0 + F1 + minimum F2
+  prove browse -> inspect -> edit -> validate -> reindex/recover
+
+Structure Slice:
+  F3 centered, with F2 relation editing improvements
+  deepen backlinks, graph navigation, timeline context, and ontology usage
+
+Trust Slice:
+  F4 centered, with F2 conflict/error improvements
+  deepen history, diff, restore, rev conflict, and mutation recovery UX
+
+Operations Slice:
+  F5 centered, with F1 status/index state improvements
+  deepen admin jobs, recovery, backup, public boundary, job audit, and unavailable states
+
+Hardening Slice:
+  F6 centered
+  polish keyboard access, focus behavior, responsive panels, error disclosure, smoke tests, and refresh/failure survival
+```
+
+Cross-slice dependency policy:
+
+```text
+when implementing F1:
+  reserve stable locations for edit actions, permission hints, validation warnings, and admin recovery prompts
+
+when implementing F2:
+  expose save result rev/event/warning information in a place that F4 history can later expand
+
+when implementing F3:
+  keep graph, timeline, ontology, backlinks, and object detail connected through the same selected-object model
+
+when implementing F4:
+  reuse editor state, LWS error mapping, and backend-returned event ids; do not introduce arbitrary patch input
+
+when implementing F5:
+  reuse global status, index state, permission denied, and job envelope display patterns from earlier slices
+```
+
+This approach prevents wide-but-shallow pages while still allowing later features to leave small hooks in earlier screens.
+
+## 4. Milestones
 
 ### F0 - UI Foundation
 
@@ -258,9 +314,9 @@ graph canvas has an accessible list alternative
 the workbench is ready for real local alpha operation
 ```
 
-## 4. First Implementation Target
+## 5. First Implementation Target
 
-The first implementation target should be `F0 + F1 + the minimum F2 slice`.
+The first implementation target should be the Foundation Slice: `F0 + F1 + the minimum F2 slice`.
 
 Minimum F2 slice:
 
@@ -276,7 +332,7 @@ draft preservation after failed save
 
 This is intentionally smaller than F1-F6. It proves the core operating loop before history, restore, full admin operations, and deeper ontology/timeline UX are locked in.
 
-## 5. Deferred Until Later Milestones
+## 6. Deferred Until Later Milestones
 
 These items should not block the first usable frontend:
 
@@ -294,7 +350,7 @@ advanced search UI
 permission administration UI beyond readonly hints
 ```
 
-## 6. Verification Baseline
+## 7. Verification Baseline
 
 Every frontend milestone should keep the existing backend regression green unless a migration explicitly updates the contract.
 
@@ -306,4 +362,3 @@ npm.cmd run test:milestone-m7
 ```
 
 Frontend-specific smoke tests should be added once the first integrated workbench routes and user flows are implemented.
-
