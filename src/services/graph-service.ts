@@ -14,7 +14,7 @@ export class GraphService {
   getGraph(query: { center?: string; depth?: number }, context: RequestContext) {
     const db = this.indexStore.openReady();
     const center = query.center ?? null;
-    const centerFilter = center ? "AND (e.source_id = ? OR e.target_id = ?)" : "";
+    const centerFilter = center ? "AND (e.source_id = ? OR e.target_id = ? OR e.edge_id = ?)" : "";
     const edgeVisible = this.visiblePredicate(context, "eo");
     const sourceVisible = this.visiblePredicate(context, "so");
     const targetVisible = this.visiblePredicate(context, "tobj");
@@ -22,7 +22,7 @@ export class GraphService {
       ...edgeVisible.params,
       ...sourceVisible.params,
       ...targetVisible.params,
-      ...(center ? [center, center] : [])
+      ...(center ? [center, center, center] : [])
     ];
     const edges = db
       .prepare(

@@ -104,6 +104,7 @@ Production-grade session/token verification은 M6 범위 밖이다.
 - stable LWS error response shape/status
 - anonymous private object read/history/permissions/validation denied
 - private search/list/graph/timeline/ontology/backlinks leak 방지
+- edge id centered graph query에서 public edge는 반환되고 private edge는 anonymous 응답에서 노출되지 않음
 - missing SQLite projection의 `INDEX_REBUILD_REQUIRED` mapping
 - local-admin mutation/admin allowed with valid local secret in development
 - local-admin denied with wrong secret or production environment

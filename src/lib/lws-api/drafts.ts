@@ -71,36 +71,36 @@ export function createEmptyEdgeDraft(defaultVisibility: Visibility = "private"):
 
 export function nodeToDraft(node: LwsNode): NodeDraft {
   return {
-    id: node.id,
-    title: node.title,
-    slug: node.slug,
-    type: node.type,
-    detail_mode: node.detail_mode,
-    visibility: node.visibility,
-    status: node.status,
+    id: textOrEmpty(node.id),
+    title: textOrEmpty(node.title),
+    slug: textOrEmpty(node.slug),
+    type: textOrDefault(node.type, "type.note"),
+    detail_mode: valueOrDefault(node.detail_mode, "note"),
+    visibility: valueOrDefault(node.visibility, "private"),
+    status: valueOrDefault(node.status, "active"),
     summary: node.summary ?? "",
-    content: node.content ?? { format: "markdown", body: "" },
-    tags: [...node.tags],
+    content: normalizeDraftContent(node.content),
+    tags: normalizeTags(Array.isArray(node.tags) ? node.tags : []),
     props: cloneRecord(node.props),
-    temporal: { ...node.temporal }
+    temporal: normalizeDraftTemporal(node.temporal)
   };
 }
 
 export function edgeToDraft(edge: LwsEdge): EdgeDraft {
   return {
-    id: edge.id,
-    title: edge.title,
-    source: edge.source,
-    target: edge.target,
-    type: edge.type,
-    detail_mode: edge.detail_mode,
-    visibility: edge.visibility,
-    status: edge.status,
+    id: textOrEmpty(edge.id),
+    title: textOrEmpty(edge.title),
+    source: textOrEmpty(edge.source),
+    target: textOrEmpty(edge.target),
+    type: textOrDefault(edge.type, "rel.references"),
+    detail_mode: valueOrDefault(edge.detail_mode, "note"),
+    visibility: valueOrDefault(edge.visibility, "private"),
+    status: valueOrDefault(edge.status, "active"),
     summary: edge.summary ?? "",
-    content: edge.content ?? { format: "markdown", body: "" },
-    tags: [...edge.tags],
+    content: normalizeDraftContent(edge.content),
+    tags: normalizeTags(Array.isArray(edge.tags) ? edge.tags : []),
     props: cloneRecord(edge.props),
-    temporal: { ...edge.temporal }
+    temporal: normalizeDraftTemporal(edge.temporal)
   };
 }
 
@@ -264,6 +264,21 @@ function normalizeContent(body: string | undefined) {
   return trimmed.length > 0 ? { format: "markdown" as const, body: trimmed } : undefined;
 }
 
+function normalizeDraftContent(content: LwsNode["content"] | LwsEdge["content"]) {
+  return {
+    format: "markdown" as const,
+    body: textOrEmpty(content?.body)
+  };
+}
+
+function normalizeDraftTemporal(value: TemporalFields | undefined): TemporalFields {
+  return {
+    occurred_at: value?.occurred_at ?? null,
+    valid_from: value?.valid_from ?? null,
+    valid_to: value?.valid_to ?? null
+  };
+}
+
 function normalizeTemporal(value: TemporalFields): TemporalFields {
   return {
     occurred_at: nullIfBlank(value.occurred_at),
@@ -278,6 +293,19 @@ function nullIfBlank(value: string | null): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function textOrEmpty(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function textOrDefault(value: unknown, fallback: string): string {
+  const text = textOrEmpty(value);
+  return text.length > 0 ? text : fallback;
+}
+
+function valueOrDefault<T>(value: T | undefined, fallback: T): T {
+  return value ?? fallback;
 }
 
 function stripEmptyOptional<T extends Record<string, unknown>>(object: T): Partial<T> {
@@ -316,6 +344,9 @@ function sortForJson(value: unknown): unknown {
 }
 
 function cloneRecord(value: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(value)) {
+    return {};
+  }
   return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
 }
 

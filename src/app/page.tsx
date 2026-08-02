@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, DatabaseZap, FilePlus2, GitBranch, MoreHorizontal, Network, RefreshCw, Save, Search, Shield, SquarePen } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, DatabaseZap, FilePlus2, GitBranch, GitCommitHorizontal, History as HistoryIcon, MoreHorizontal, Network, RefreshCw, Save, Search, Shield, SquarePen } from "lucide-react";
 
+import { RelationshipFlow } from "../components/relationship-flow";
 import { Badge, Button, Dialog, DropdownMenu, IconButton, Panel, Select, Switch, Tabs } from "../components/ui";
 import { createLwsClient, toApiError, type LwsClient } from "../lib/lws-api/client";
 import {
@@ -29,17 +30,20 @@ import type {
   EdgeDraft,
   EditorState,
   GraphResponse,
+  GlobalMutationEvent,
   JsonPatchOperation,
   LwsApiError,
   LwsEdge,
   LwsNode,
   LwsObject,
   NodeDraft,
+  ObjectHistoryLink,
   ObjectKind,
   ObjectListResponse,
   ObjectReadResponse,
   ObjectRow,
   OntologyResponse,
+  PatchRecord,
   SessionResponse,
   StatusResponse,
   TimelineResponse,
@@ -144,19 +148,19 @@ export default function Page() {
     }
 
     try {
-      const [objects, graph, timeline, ontology] = await Promise.all([
+      const [objects, timeline, ontology] = await Promise.all([
         client.listObjects(objectParams),
-        safeOptional(() => client.getGraph()),
         safeOptional(() => client.getTimeline()),
         safeOptional(() => client.getOntology())
       ]);
-      const selectedCandidate = nextSelectedId ?? objects.items[0]?.id ?? null;
-      const [selected, validation] = selectedCandidate
+      const selectedCandidate = nextSelectedId ?? null;
+      const [graph, selected, validation] = selectedCandidate
         ? await Promise.all([
+            safeOptional(() => client.getGraph(selectedCandidate)),
             client.getObject(selectedCandidate),
             safeOptional(() => client.validateObject(selectedCandidate))
           ])
-        : [null, null];
+        : await Promise.all([safeOptional(() => client.getGraph()), Promise.resolve(null), Promise.resolve(null)]);
 
       setSelectedId(selectedCandidate);
       setState({
@@ -199,8 +203,9 @@ export default function Page() {
   }
 
   function selectObject(id: string) {
-    setSelectedId(id);
-    void loadWorkbench(id);
+    const nextId = selectedId === id ? null : id;
+    setSelectedId(nextId);
+    void loadWorkbench(nextId);
   }
 
   async function runAdminAction(action: "validate" | "reindex") {
@@ -253,11 +258,13 @@ export default function Page() {
           <ObjectDetail
             client={client}
             defaultVisibility={defaultVisibility}
+            graph={state.graph}
             objects={state.objects?.items ?? []}
             selected={state.selected}
             validation={state.validation}
             onError={(error) => setState((current) => ({ ...current, error }))}
             onSaved={(id) => void loadWorkbench(id)}
+            onSelect={selectObject}
           />
         </section>
 
@@ -266,10 +273,12 @@ export default function Page() {
           adminMode={adminMode}
           graph={state.graph}
           ontology={state.ontology}
+          selected={state.selected}
           session={state.session}
           status={state.status}
           timeline={state.timeline}
           validation={state.validation}
+          onSelect={selectObject}
           onReindex={() => void runAdminAction("reindex")}
           onValidate={() => void runAdminAction("validate")}
         />
@@ -322,7 +331,7 @@ function AppShellTopbar({
 
       <div className="command-bar">
         <div className="status-strip">
-          <Metric label="Storage" value={status?.storage.ok ? "Ready" : status ? "Attention" : "..."} tone={status?.storage.ok ? "good" : "warn"} />
+          <Metric label="Storage" value={status?.storage.status === "ok" ? "Ready" : status ? "Attention" : "..."} tone={status?.storage.status === "ok" ? "good" : "warn"} />
           <Metric label="Env" value={status?.app.env ?? "..."} />
           <Metric label="Viewer" value={session?.display_name ?? "..."} />
           <Metric label="Auth" value={session?.auth_source ?? "..."} />
@@ -334,6 +343,9 @@ function AppShellTopbar({
         <Button onClick={onCreateEdge}>
           <GitBranch size={15} /> Edge
         </Button>
+        <a className="button ghost" href="/graph">
+          <Network size={15} /> Graph
+        </a>
 
         <div className="admin-mode">
           <Switch
@@ -445,19 +457,23 @@ function ObjectBrowser({
 function ObjectDetail({
   client,
   defaultVisibility,
+  graph,
   objects,
   selected,
   validation,
   onError,
-  onSaved
+  onSaved,
+  onSelect
 }: {
   client: LwsClient;
   defaultVisibility: Visibility;
+  graph: GraphResponse | null;
   objects: ObjectRow[];
   selected: ObjectReadResponse | null;
   validation: ValidationReport | null;
   onError: (error: LwsApiError) => void;
   onSaved: (id: string) => void;
+  onSelect: (id: string) => void;
 }) {
   const [tab, setTab] = useState("overview");
 
@@ -519,6 +535,16 @@ function ObjectDetail({
             )
           },
           {
+            value: "relations",
+            label: `Relations${graph?.edges.length ? ` (${graph.edges.length})` : ""}`,
+            content: <ObjectRelations object={object} graph={graph} onSelect={onSelect} />
+          },
+          {
+            value: "history",
+            label: "History",
+            content: <ObjectHistoryPanel active={tab === "history"} client={client} object={object} onError={onError} />
+          },
+          {
             value: "validation",
             label: `Validation${issues.length ? ` (${issues.length})` : ""}`,
             content: <IssueList issues={issues} empty="No validation issues returned." />
@@ -569,6 +595,273 @@ function ObjectOverview({ object, selected, validation }: { object: LwsObject; s
   );
 }
 
+function ObjectRelations({ object, graph, onSelect }: { object: LwsObject; graph: GraphResponse | null; onSelect: (id: string) => void }) {
+  const relations = getRelevantEdges(object, graph);
+
+  if (!graph || relations.length === 0) {
+    return (
+      <div className="empty-relations">
+        <Network size={24} />
+        <h3>No related objects</h3>
+        <p className="muted">No visible 1-hop relations were returned for this object.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <RelationshipFlow graph={graph} focusId={object.id} onSelect={onSelect} />
+      <section className="subsection relation-detail-section">
+        <h3>Relation Details</h3>
+        <div className="relation-detail-list">
+          {relations.map((edge) => (
+            <RelationRow edge={edge} graph={graph} selectedId={object.id} onSelect={onSelect} key={edge.edge_id} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RelationRow({
+  edge,
+  graph,
+  selectedId,
+  onSelect
+}: {
+  edge: GraphResponse["edges"][number];
+  graph: GraphResponse;
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const source = getGraphObject(graph, edge.source_id);
+  const target = getGraphObject(graph, edge.target_id);
+  const edgeObject = getGraphObject(graph, edge.edge_id);
+  const selectRelatedObject = (id: string) => {
+    if (id !== selectedId) {
+      onSelect(id);
+    }
+  };
+
+  return (
+    <div className="relation-detail-row">
+      <button className={selectedId === edge.source_id ? "relation-detail-node active" : "relation-detail-node"} type="button" onClick={() => selectRelatedObject(edge.source_id)}>
+        <span>{source?.title ?? edge.source_id}</span>
+        <small>{edge.source_id}</small>
+      </button>
+      <button className={selectedId === edge.edge_id ? "relation-detail-edge active" : "relation-detail-edge"} type="button" onClick={() => selectRelatedObject(edge.edge_id)}>
+        <strong>{edge.relation_type}</strong>
+        <span>{edgeObject?.title ?? edge.edge_id}</span>
+      </button>
+      <button className={selectedId === edge.target_id ? "relation-detail-node active" : "relation-detail-node"} type="button" onClick={() => selectRelatedObject(edge.target_id)}>
+        <span>{target?.title ?? edge.target_id}</span>
+        <small>{edge.target_id}</small>
+      </button>
+    </div>
+  );
+}
+
+function ObjectHistoryPanel({ active, client, object, onError }: { active: boolean; client: LwsClient; object: LwsObject; onError: (error: LwsApiError) => void }) {
+  const [history, setHistory] = useState<ObjectHistoryLink[] | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventDetail, setEventDetail] = useState<GlobalMutationEvent | null>(null);
+  const [diff, setDiff] = useState<PatchRecord | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHistory(null);
+    setSelectedEventId(null);
+    setEventDetail(null);
+    setDiff(null);
+    setLocalError(null);
+  }, [object.id]);
+
+  useEffect(() => {
+    if (!active || history) {
+      return;
+    }
+
+    let canceled = false;
+    setLoading(true);
+    setLocalError(null);
+
+    void client
+      .listObjectHistory(object.id)
+      .then((response) => {
+        if (canceled) {
+          return;
+        }
+        setHistory([...response.items].sort(compareHistoryDescending));
+      })
+      .catch((error) => {
+        if (canceled) {
+          return;
+        }
+        const apiError = toApiError(error);
+        setLocalError(apiError.message);
+        onError(apiError);
+      })
+      .finally(() => {
+        if (!canceled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [active, client, history, object.id, onError]);
+
+  async function selectEvent(eventId: string) {
+    setSelectedEventId(eventId);
+    setEventDetail(null);
+    setDiff(null);
+    setDetailLoading(true);
+    setLocalError(null);
+
+    try {
+      const [event, patchRecord] = await Promise.all([client.getHistoryEvent(object.id, eventId), client.getHistoryDiff(object.id, eventId)]);
+      setEventDetail(event);
+      setDiff(patchRecord);
+    } catch (error) {
+      const apiError = toApiError(error);
+      setLocalError(apiError.message);
+      onError(apiError);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  if (!active) {
+    return <p className="muted">Open History to load object event records.</p>;
+  }
+
+  if (loading) {
+    return <p className="muted">Loading history...</p>;
+  }
+
+  const items = history ?? [];
+
+  if (items.length === 0) {
+    return (
+      <div className="empty-relations">
+        <HistoryIcon size={24} />
+        <h3>No history records</h3>
+        <p className="muted">No event records were returned for this object.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="history-layout">
+      <section className="history-list" aria-label="Object event history">
+        {items.map((item) => (
+          <button className={selectedEventId === item.event_id ? "history-card active" : "history-card"} type="button" onClick={() => void selectEvent(item.event_id)} key={item.event_id}>
+            <span className="history-card-topline">
+              <Badge tone={eventTone(item.event_type)}>{item.event_type}</Badge>
+              <span>rev {item.base_rev} -&gt; {item.next_rev}</span>
+            </span>
+            <strong>{item.summary}</strong>
+            <span className="history-card-meta">{formatDate(item.occurred_at)}</span>
+            <span className="history-event-id">{item.event_id}</span>
+          </button>
+        ))}
+      </section>
+
+      <section className="history-detail" aria-label="Selected history event detail">
+        {localError ? (
+          <div className="issue">
+            <strong>History lookup failed</strong>
+            <span>{localError}</span>
+          </div>
+        ) : null}
+        {!selectedEventId ? (
+          <div className="empty-history-detail">
+            <GitCommitHorizontal size={24} />
+            <h3>Select an event</h3>
+            <p className="muted">Event detail and patch records are loaded on demand.</p>
+          </div>
+        ) : null}
+        {detailLoading ? <p className="muted">Loading event detail...</p> : null}
+        {eventDetail && diff ? <HistoryEventDetail event={eventDetail} diff={diff} /> : null}
+      </section>
+    </div>
+  );
+}
+
+function HistoryEventDetail({ event, diff }: { event: GlobalMutationEvent; diff: PatchRecord }) {
+  return (
+    <div className="stack">
+      <div className="readonly-grid">
+        <Field label="Event" value={event.event_id} />
+        <Field label="Actor" value={event.account_id} />
+        <Field label="Occurred" value={formatDate(event.occurred_at)} />
+      </div>
+      <div className="readonly-grid">
+        <Field label="Revision" value={`${event.base_rev} -> ${event.next_rev}`} />
+        <Field label="Before hash" value={shortHash(event.before_hash)} />
+        <Field label="After hash" value={shortHash(event.after_hash)} />
+      </div>
+      <section className="subsection">
+        <h3>Changed Fields</h3>
+        <div className="badge-row">
+          {event.changed_fields.length ? event.changed_fields.map((field) => <span className="badge info" key={field}>{field}</span>) : <span className="muted">No changed fields returned.</span>}
+        </div>
+      </section>
+      <section className="subsection">
+        <h3>Changed Values</h3>
+        <PatchOperationList operations={diff.patch} inverseOperations={diff.inverse_patch} />
+      </section>
+      <section className="subsection">
+        <h3>Inverse Patch</h3>
+        <PatchOperationList operations={diff.inverse_patch} inverseOperations={diff.patch} />
+      </section>
+      <details className="technical-details">
+        <summary>Technical JSON</summary>
+        <pre className="raw-json">{JSON.stringify({ event, diff }, null, 2)}</pre>
+      </details>
+    </div>
+  );
+}
+
+function PatchOperationList({ operations, inverseOperations = [] }: { operations: JsonPatchOperation[]; inverseOperations?: JsonPatchOperation[] }) {
+  if (operations.length === 0) {
+    return <p className="muted">No patch operations returned.</p>;
+  }
+
+  return (
+    <div className="patch-operation-list">
+      {operations.map((operation, index) => {
+        const inverse = inverseOperations.find((candidate) => candidate.path === operation.path);
+        const before = patchBeforeValue(operation, inverse);
+        const after = patchAfterValue(operation);
+        return (
+          <div className="patch-operation" key={`${operation.op}-${operation.path}-${index}`}>
+            <div className="patch-operation-main">
+              <Badge tone={operation.op === "remove" ? "danger" : operation.op === "test" ? "neutral" : "info"}>{operation.op}</Badge>
+              <span>{operation.path}</span>
+            </div>
+            {before !== null || after !== null ? (
+              <div className="patch-values">
+                <div>
+                  <span>Before</span>
+                  <pre>{formatPatchValue(before)}</pre>
+                </div>
+                <div>
+                  <span>After</span>
+                  <pre>{formatPatchValue(after)}</pre>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ObjectEditPanel({
   client,
   object,
@@ -590,12 +883,18 @@ function ObjectEditPanel({
   const [lastPatch, setLastPatch] = useState<JsonPatchOperation[]>([]);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const previousObjectId = useRef(object.id);
 
   useEffect(() => {
+    const objectChanged = previousObjectId.current !== object.id;
+    previousObjectId.current = object.id;
+
     setDraft(object.object_kind === "node" ? nodeToDraft(object) : edgeToDraft(object));
     setEditorState(readonly ? "readonly" : "clean");
     setLastPatch([]);
-    setLastResult(null);
+    if (objectChanged) {
+      setLastResult(null);
+    }
     setLocalError(null);
   }, [object, readonly]);
 
@@ -843,7 +1142,7 @@ function DraftForm({
         <label>{kind === "edge" ? "Relation type" : "Type"}</label>
         <input
           className="input"
-          value={draft.type}
+          value={draft.type ?? ""}
           onChange={(event) => update("type", event.target.value)}
           disabled={readonly}
           list={kind === "edge" ? "relation-type-options" : "node-type-options"}
@@ -889,10 +1188,12 @@ function RightInspector({
   adminMode,
   graph,
   ontology,
+  selected,
   session,
   status,
   timeline,
   validation,
+  onSelect,
   onReindex,
   onValidate
 }: {
@@ -900,13 +1201,17 @@ function RightInspector({
   adminMode: AdminMode;
   graph: GraphResponse | null;
   ontology: OntologyResponse | null;
+  selected: ObjectReadResponse | null;
   session: SessionResponse | null;
   status: StatusResponse | null;
   timeline: TimelineResponse | null;
   validation: ValidationReport | null;
+  onSelect: (id: string) => void;
   onReindex: () => void;
   onValidate: () => void;
 }) {
+  const selectedObject = selected?.object ?? null;
+
   return (
     <aside className="operations-panel" aria-label="Operations">
       <Panel
@@ -937,13 +1242,25 @@ function RightInspector({
         </div>
       </Panel>
 
-      <Panel title="Graph">
-        <div className="readonly-grid">
-          <Field label="Nodes" value={String(graph?.nodes.length ?? 0)} />
-          <Field label="Edges" value={String(graph?.edges.length ?? 0)} />
-          <Field label="Depth" value={String(graph?.depth ?? 1)} />
-        </div>
-      </Panel>
+      {selectedObject ? (
+        <RelatedObjectsPanel object={selectedObject} graph={graph} onSelect={onSelect} />
+      ) : (
+        <Panel
+          title="Graph"
+          actions={
+            <a className="button ghost" href="/graph">
+              <Network size={14} /> Open
+            </a>
+          }
+        >
+          <div className="readonly-grid">
+            <Field label="Nodes" value={String(graph?.nodes.length ?? 0)} />
+            <Field label="Edges" value={String(graph?.edges.length ?? 0)} />
+            <Field label="Depth" value={String(graph?.depth ?? 1)} />
+          </div>
+          <p className="help-text">Select an object to replace this summary with its local relations.</p>
+        </Panel>
+      )}
 
       <Panel title="Timeline">
         <Field label="Items" value={String(timeline?.items.length ?? 0)} />
@@ -968,6 +1285,35 @@ function RightInspector({
   );
 }
 
+function RelatedObjectsPanel({ object, graph, onSelect }: { object: LwsObject; graph: GraphResponse | null; onSelect: (id: string) => void }) {
+  const relations = getRelevantEdges(object, graph);
+  const relatedEntries = getRelatedObjectEntries(object, relations);
+
+  return (
+    <Panel title="Related Objects">
+      {relatedEntries.length ? (
+        <div className="related-list">
+          {relatedEntries.slice(0, 8).map(({ edge, objectId }) => {
+            const source = getGraphObject(graph, edge.source_id);
+            const target = getGraphObject(graph, edge.target_id);
+            const neighbor = getGraphObject(graph, objectId);
+            return (
+              <button className="related-row" type="button" onClick={() => onSelect(objectId)} key={`${edge.edge_id}-${objectId}`}>
+                <span>{neighbor?.title ?? objectId}</span>
+                <small>
+                  {source?.title ?? edge.source_id} / {edge.relation_type} / {target?.title ?? edge.target_id}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="muted">No visible local relations for the selected object.</p>
+      )}
+    </Panel>
+  );
+}
+
 function IndexRecoveryPrompt({ error, adminMode, onReindex }: { error: LwsApiError; adminMode: AdminMode; onReindex: () => void }) {
   return (
     <div className="issue">
@@ -987,7 +1333,7 @@ function TextField({ label, value, onChange, readonly, list }: { label: string; 
   return (
     <div className="form-field">
       <label>{label}</label>
-      <input className="input" value={value} onChange={(event) => onChange(event.target.value)} disabled={readonly} list={list} />
+      <input className="input" value={value ?? ""} onChange={(event) => onChange(event.target.value)} disabled={readonly} list={list} />
     </div>
   );
 }
@@ -996,7 +1342,7 @@ function TextAreaField({ label, value, onChange, readonly, mono }: { label: stri
   return (
     <div className="form-field full">
       <label>{label}</label>
-      <textarea className={`textarea ${mono ? "mono" : ""}`} value={value} onChange={(event) => onChange(event.target.value)} disabled={readonly} />
+      <textarea className={`textarea ${mono ? "mono" : ""}`} value={value ?? ""} onChange={(event) => onChange(event.target.value)} disabled={readonly} />
     </div>
   );
 }
@@ -1091,6 +1437,101 @@ function getPublicEdgeWarning(draft: EdgeDraft, objects: ObjectRow[]): string | 
     return "public edge requires public source and public target. The backend will enforce this on save.";
   }
   return null;
+}
+
+function getRelevantEdges(object: LwsObject, graph: GraphResponse | null): Array<GraphResponse["edges"][number]> {
+  if (!graph) {
+    return [];
+  }
+
+  if (object.object_kind === "edge") {
+    return graph.edges.filter((edge) => edge.edge_id === object.id || edge.source_id === object.source || edge.target_id === object.target);
+  }
+
+  return graph.edges.filter((edge) => edge.source_id === object.id || edge.target_id === object.id);
+}
+
+function getRelatedObjectEntries(object: LwsObject, edges: Array<GraphResponse["edges"][number]>): Array<{ edge: GraphResponse["edges"][number]; objectId: string }> {
+  if (object.object_kind === "edge") {
+    return edges.flatMap((edge) => {
+      if (edge.edge_id === object.id) {
+        return [
+          { edge, objectId: edge.source_id },
+          { edge, objectId: edge.target_id }
+        ];
+      }
+      return [{ edge, objectId: edge.edge_id }];
+    });
+  }
+
+  return edges.map((edge) => ({
+    edge,
+    objectId: edge.source_id === object.id ? edge.target_id : edge.source_id
+  }));
+}
+
+function getGraphObject(graph: GraphResponse | null, id: string): ObjectRow | undefined {
+  return graph?.nodes.find((item) => item.id === id);
+}
+
+function compareHistoryDescending(left: ObjectHistoryLink, right: ObjectHistoryLink): number {
+  const byDate = new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime();
+  if (byDate !== 0) {
+    return byDate;
+  }
+  return right.line - left.line;
+}
+
+function eventTone(eventType: string): "neutral" | "good" | "warn" | "danger" | "info" {
+  if (eventType.endsWith(".created")) {
+    return "good";
+  }
+  if (eventType.endsWith(".deleted")) {
+    return "danger";
+  }
+  if (eventType.endsWith(".restored")) {
+    return "warn";
+  }
+  return "info";
+}
+
+function shortHash(value: string | null): string {
+  if (!value) {
+    return "none";
+  }
+  return value.length > 18 ? `${value.slice(0, 18)}...` : value;
+}
+
+function patchBeforeValue(operation: JsonPatchOperation, inverse: JsonPatchOperation | undefined): unknown {
+  if (operation.op === "add") {
+    return null;
+  }
+  if (operation.op === "remove") {
+    return inverse && "value" in inverse ? inverse.value : undefined;
+  }
+  return inverse && "value" in inverse ? inverse.value : undefined;
+}
+
+function patchAfterValue(operation: JsonPatchOperation): unknown {
+  if (operation.op === "remove") {
+    return null;
+  }
+  return "value" in operation ? operation.value : undefined;
+}
+
+function formatPatchValue(value: unknown): string {
+  if (value === null) {
+    return "(none)";
+  }
+  if (value === undefined) {
+    return "(not recorded)";
+  }
+  if (typeof value === "string") {
+    return value.length > 520 ? `${value.slice(0, 520)}...` : value;
+  }
+
+  const text = JSON.stringify(value, null, 2);
+  return text.length > 520 ? `${text.slice(0, 520)}...` : text;
 }
 
 function formatDate(value: string): string {

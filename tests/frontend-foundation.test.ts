@@ -87,6 +87,20 @@ assert.deepEqual(
 );
 assert.equal(nodePatch.some((operation) => operation.path === "/rev" || operation.path.startsWith("/audit")), false);
 
+const partialNodeDraft = nodeToDraft({
+  ...baselineNode,
+  slug: undefined,
+  type: undefined,
+  tags: undefined,
+  props: undefined,
+  temporal: undefined
+} as unknown as LwsNode);
+assert.equal(partialNodeDraft.slug, "");
+assert.equal(partialNodeDraft.type, "type.note");
+assert.deepEqual(partialNodeDraft.tags, []);
+assert.deepEqual(partialNodeDraft.props, {});
+assert.deepEqual(partialNodeDraft.temporal, { occurred_at: null, valid_from: null, valid_to: null });
+
 const baselineEdge: LwsEdge = {
   schema_version: 1,
   object_kind: "edge",
@@ -117,5 +131,17 @@ assert.deepEqual(
   edgePatch.map((operation) => operation.path).sort(),
   ["/target", "/visibility"]
 );
+
+const partialEdgeDraft = edgeToDraft({
+  ...baselineEdge,
+  source: undefined,
+  target: undefined,
+  type: undefined,
+  content: undefined
+} as unknown as LwsEdge);
+assert.equal(partialEdgeDraft.source, "");
+assert.equal(partialEdgeDraft.target, "");
+assert.equal(partialEdgeDraft.type, "rel.references");
+assert.deepEqual(partialEdgeDraft.content, { format: "markdown", body: "" });
 
 console.log("Frontend foundation checks passed.");

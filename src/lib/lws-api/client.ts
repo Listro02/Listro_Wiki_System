@@ -1,6 +1,7 @@
 import type {
   AdminJobResponse,
   GraphResponse,
+  GlobalMutationEvent,
   JsonPatchOperation,
   LwsApiError,
   LwsAuthContext,
@@ -8,9 +9,11 @@ import type {
   LwsNode,
   MutationResult,
   ObjectKind,
+  ObjectHistoryResponse,
   ObjectListResponse,
   ObjectReadResponse,
   OntologyResponse,
+  PatchRecord,
   SessionResponse,
   StatusResponse,
   TimelineResponse,
@@ -47,6 +50,11 @@ export function createLwsClient(auth: LwsAuthContext, fetcher: Fetcher = default
     searchObjects: (params: ObjectListParams = {}) => request<ObjectListResponse>(withQuery("/api/lws/search", params), { auth, fetcher }),
     getObject: (id: string) => request<ObjectReadResponse>(`/api/lws/objects/${encodeURIComponent(id)}`, { auth, fetcher }),
     validateObject: (id: string) => request<ValidationReport>(`/api/lws/objects/${encodeURIComponent(id)}/validation`, { auth, fetcher }),
+    listObjectHistory: (id: string) => request<ObjectHistoryResponse>(`/api/lws/objects/${encodeURIComponent(id)}/history`, { auth, fetcher }),
+    getHistoryEvent: (id: string, eventId: string) =>
+      request<GlobalMutationEvent>(`/api/lws/objects/${encodeURIComponent(id)}/history/${encodeURIComponent(eventId)}`, { auth, fetcher }),
+    getHistoryDiff: (id: string, eventId: string) =>
+      request<PatchRecord>(`/api/lws/objects/${encodeURIComponent(id)}/history/${encodeURIComponent(eventId)}/diff`, { auth, fetcher }),
     getGraph: (center?: string) => request<GraphResponse>(withQuery("/api/lws/graph", { center, depth: center ? 1 : undefined }), { auth, fetcher }),
     getTimeline: () => request<TimelineResponse>("/api/lws/timeline", { auth, fetcher }),
     getOntology: () => request<OntologyResponse>("/api/lws/ontology", { auth, fetcher }),

@@ -65,6 +65,23 @@ tag.backend --rel.classifies--> app.lws
 
 An edge is stored as a first-class object because relationships often need their own metadata: summary, evidence, temporal range, visibility, audit fields, history, and permissions. When a relationship becomes important enough to discuss as knowledge, L.W.S. can surface it as node-like material without losing the simple node-to-node graph model.
 
+### First-Class Objects And Supporting Records
+
+In the current implementation, the canonical first-class objects are `node` and `edge`.
+
+A first-class object has stable identity, schema validation, storage, permissions, history, and can participate in relations. `node` and `edge` both meet that bar. An edge is not just a line between nodes; it is a relationship object with its own metadata and history.
+
+Other system records can be node-like in philosophy or UX, but they are not canonical first-class objects unless they are materialized as `node` or `edge` JSON.
+
+```text
+first-class objects  -> node, edge
+supporting records   -> event log row, patch record, object history link, admin job, validation issue
+generated projections -> SQLite objects/graph_edges/timeline_items/object_history rows
+frontend/UI state    -> selected object, draft, active tab, graph viewport
+```
+
+This keeps the "Everything meaningful is a node" idea without making every log, projection row, or UI state into a stored node.
+
 ### Current State And History Are Separate
 
 Current `node` and `edge` JSON files represent the latest state.

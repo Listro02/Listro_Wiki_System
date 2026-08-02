@@ -143,6 +143,11 @@ const graph = new GraphService(indexStore).getGraph({ center: "svc.caddy", depth
 assert.equal(graph.edges.some((edge: any) => edge.edge_id === "edge.01JPUBLIC"), true);
 assert.equal(graph.nodes.some((node: any) => node.id === "app.secret"), false);
 
+const edgeCenteredGraph = new GraphService(indexStore).getGraph({ center: "edge.01JPUBLIC", depth: 1 }, anonymous);
+assert.equal(edgeCenteredGraph.edges.some((edge: any) => edge.edge_id === "edge.01JPUBLIC"), true);
+assert.equal(edgeCenteredGraph.nodes.some((node: any) => node.id === "svc.caddy"), true);
+assert.equal(edgeCenteredGraph.nodes.some((node: any) => node.id === "svc.web"), true);
+
 const backlinks = new GraphService(indexStore).getBacklinks("svc.web", anonymous);
 assert.equal(backlinks.items.some((item: any) => item.edge_id === "edge.01JPUBLIC"), true);
 

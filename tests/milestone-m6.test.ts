@@ -240,6 +240,13 @@ assert.equal(JSON.stringify(searchResult).includes("Private M6 Secret"), false);
 const graphResult = await okBody(await graphRoute.GET(request("http://lws.local/api/lws/graph")));
 assertPublicOnly(graphResult.data.nodes, "id");
 assert.equal(graphResult.data.edges.some((edge: any) => edge.edge_id === "edge.m6.private-ref"), false);
+const publicEdgeCenteredGraph = await okBody(await graphRoute.GET(request("http://lws.local/api/lws/graph?center=edge.m6.public-ref")));
+assert.equal(publicEdgeCenteredGraph.data.edges.some((edge: any) => edge.edge_id === "edge.m6.public-ref"), true);
+assert.equal(publicEdgeCenteredGraph.data.nodes.some((node: any) => node.id === "note.public-m6"), true);
+assert.equal(publicEdgeCenteredGraph.data.nodes.some((node: any) => node.id === "type.public-m6"), true);
+const privateEdgeCenteredGraph = await okBody(await graphRoute.GET(request("http://lws.local/api/lws/graph?center=edge.m6.private-ref")));
+assert.equal(privateEdgeCenteredGraph.data.edges.some((edge: any) => edge.edge_id === "edge.m6.private-ref"), false);
+assertPublicOnly(privateEdgeCenteredGraph.data.nodes, "id");
 const backlinksResult = await okBody(
   await backlinksRoute.GET(
     request("http://lws.local/api/lws/objects/note.private-m6/backlinks"),

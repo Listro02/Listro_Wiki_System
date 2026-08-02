@@ -37,6 +37,7 @@ L.W.S.는 단순한 wiki page editor가 아니라, configured storage root 아�
 | [LWS_FRONTEND_DESIGN.md](./LWS_FRONTEND_DESIGN.md) | app shell, 화면 정보 구조, editor workflow, graph/timeline UI, thin workbench 방향 |
 | [LWS_NODE_MODEL.md](./LWS_NODE_MODEL.md) | node object shape, required/optional fields, node type/tag/ontology validation 기준 |
 | [LWS_EDGE_MODEL.md](./LWS_EDGE_MODEL.md) | edge object shape, relation type, source/target boundary, first-class relationship validation 기준 |
+| [LWS_GRAPH_READ_POLICY.md](./LWS_GRAPH_READ_POLICY.md) | graph/search 계열 조회에서 readable center, readable edge, unreadable endpoint placeholder를 다루는 정책 |
 | [LWS_PRECEDENT_RESEARCH.md](./LWS_PRECEDENT_RESEARCH.md) | node-centered wiki/knowledge system 선례 조사와 L.W.S. 설계 교훈 |
 | [LWS_PUBLIC_RELEASE_SECURITY_STRATEGY.md](./LWS_PUBLIC_RELEASE_SECURITY_STRATEGY.md) | repository public release, production access control, step-up private access, zero-day/file-access risk 완화 전략 |
 | [reference/LWS_GLOSSARY.md](./reference/LWS_GLOSSARY.md) | source of truth, projection, read model, fail-closed, effective permission 같은 핵심 용어 기준 정의 |

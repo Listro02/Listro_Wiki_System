@@ -63,6 +63,23 @@ tag.backend --rel.classifies--> app.lws
 
 edge는 1급 object로 저장한다. 관계에도 summary, evidence, temporal range, visibility, audit field, history, permission이 필요할 수 있기 때문이다. 어떤 관계가 지식으로 설명될 만큼 중요해지면, L.W.S.는 단순한 node-to-node graph model을 유지하면서도 그 관계를 node-like material로 드러낼 수 있어야 한다.
 
+### 1급 object와 지원 기록
+
+현재 구현에서 공식적인 1급 object는 `node`와 `edge`이다.
+
+1급 object는 안정적인 identity, schema validation, storage, permission, history를 가지며 relation에 참여할 수 있다. `node`와 `edge`는 이 조건을 모두 만족한다. edge는 node 사이에 그어진 선이 아니라, 자체 metadata와 history를 가진 관계 object이다.
+
+다른 system record도 철학이나 UX 관점에서는 node-like하게 볼 수 있다. 하지만 `node` 또는 `edge` JSON으로 materialize되지 않는 한 공식적인 1급 object는 아니다.
+
+```text
+1급 object           -> node, edge
+지원 기록            -> event log row, patch record, object history link, admin job, validation issue
+생성된 projection     -> SQLite objects/graph_edges/timeline_items/object_history row
+frontend/UI state    -> selected object, draft, active tab, graph viewport
+```
+
+이 구분은 "의미 있는 모든 것은 node이다"라는 철학을 유지하면서도, 모든 log, projection row, UI state를 저장된 node로 만들지는 않기 위한 경계이다.
+
 ### 현재 상태와 history는 분리한다
 
 현재 `node`와 `edge` JSON 파일은 최신 상태를 나타낸다.

@@ -35,8 +35,25 @@ export type StatusResponse = {
     auth_source: string;
   };
   storage: {
-    ok: boolean;
+    status: "ok" | "degraded" | "error";
+    allowStorageInit: boolean;
+    roots: Array<{
+      key: "knowledge" | "data" | "runtime" | "log" | "backup";
+      path: string;
+      exists: boolean;
+      readable: boolean;
+      writable: boolean;
+    }>;
+    index: {
+      mode: "sqlite";
+      sqliteEnabled: boolean;
+      sqlitePath: string;
+      sqlitePathInsideDataRoot: boolean;
+      sqliteExists: boolean;
+      state: "disabled" | "ready" | "INDEX_REBUILD_REQUIRED" | "INDEX_CORRUPT";
+    };
     issues: LwsIssue[];
+    bootstrapPlan: string[];
   };
   public_config: {
     appName: string;
@@ -183,7 +200,71 @@ export type OntologyResponse = {
 export type JsonPatchOperation =
   | { op: "add"; path: string; value: unknown }
   | { op: "replace"; path: string; value: unknown }
-  | { op: "remove"; path: string };
+  | { op: "remove"; path: string }
+  | { op: "test"; path: string; value: unknown };
+
+export type MutationEventType =
+  | "node.created"
+  | "node.updated"
+  | "node.deleted"
+  | "node.restored"
+  | "edge.created"
+  | "edge.updated"
+  | "edge.deleted"
+  | "edge.restored";
+
+export type ObjectHistoryLink = {
+  schema_version: 1;
+  event_id: string;
+  event_ref: string;
+  line: number;
+  byte_offset: number;
+  event_type: MutationEventType;
+  base_rev: number;
+  next_rev: number;
+  occurred_at: string;
+  summary: string;
+  patch_path: string;
+  after_hash: string;
+};
+
+export type ObjectHistoryResponse = {
+  items: ObjectHistoryLink[];
+  next_cursor: string | null;
+};
+
+export type GlobalMutationEvent = {
+  schema_version: 1;
+  event_id: string;
+  event_kind: "event";
+  event_type: MutationEventType;
+  object_kind: ObjectKind;
+  object_id: string;
+  base_rev: number;
+  next_rev: number;
+  account_id: string;
+  occurred_at: string;
+  summary: string;
+  changed_fields: string[];
+  object_history_path: string;
+  patch_path: string;
+  before_hash: string | null;
+  after_hash: string;
+};
+
+export type PatchRecord = {
+  schema_version: 1;
+  event_id: string;
+  object_kind: ObjectKind;
+  object_id: string;
+  base_rev: number;
+  next_rev: number;
+  patch_format: "json-patch-like";
+  patch: JsonPatchOperation[];
+  inverse_patch: JsonPatchOperation[];
+  before_hash: string | null;
+  after_hash: string;
+};
 
 export type MutationResult<T extends LwsObject = LwsObject> = {
   object: T;
