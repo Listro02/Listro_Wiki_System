@@ -74,6 +74,7 @@ export default function GraphPage() {
           <div className="readonly-grid">
             <Field label="Nodes" value={String(graph?.nodes.length ?? 0)} />
             <Field label="Edges" value={String(graph?.edges.length ?? 0)} />
+            <Field label="Placeholders" value={String(graph?.placeholders?.length ?? 0)} />
             <Field label="Depth" value={String(graph?.depth ?? 1)} />
           </div>
           <RelationshipFlow graph={graph} focusId={center} className="relationship-flow-large" showMiniMap />
@@ -93,27 +94,28 @@ function GraphEdgeList({ graph }: { graph: GraphResponse | null }) {
   }
 
   const objectById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const placeholderIds = new Set((graph.placeholders ?? []).map((placeholder) => placeholder.id));
 
   return (
     <div className="relation-list">
       {graph.edges.map((edge) => (
         <div className="relation-row" key={edge.edge_id}>
-          <GraphEndpoint object={objectById.get(edge.source_id)} fallback={edge.source_id} />
+          <GraphEndpoint object={objectById.get(edge.source_id)} fallback={edge.source_id} placeholder={placeholderIds.has(edge.source_id)} />
           <div className="relation-edge">
             {edge.relation_type}
             <span>{objectById.get(edge.edge_id)?.title ?? edge.edge_id}</span>
           </div>
-          <GraphEndpoint object={objectById.get(edge.target_id)} fallback={edge.target_id} />
+          <GraphEndpoint object={objectById.get(edge.target_id)} fallback={edge.target_id} placeholder={placeholderIds.has(edge.target_id)} />
         </div>
       ))}
     </div>
   );
 }
 
-function GraphEndpoint({ object, fallback }: { object: ObjectRow | undefined; fallback: string }) {
+function GraphEndpoint({ object, fallback, placeholder }: { object: ObjectRow | undefined; fallback: string; placeholder: boolean }) {
   return (
-    <div className="relation-pill">
-      {object?.title ?? fallback}
+    <div className={placeholder ? "relation-pill placeholder" : "relation-pill"}>
+      {object?.title ?? (placeholder ? "Unreadable endpoint" : fallback)}
       <span className="ego-meta">{object?.id ?? fallback}</span>
     </div>
   );

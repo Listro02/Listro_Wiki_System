@@ -25,3 +25,8 @@ Primary entry points:
 
 - [Frontend implementation milestones](./frontend/LWS_FRONTEND_IMPLEMENTATION_MILESTONES.md)
 
+## Cross-Surface Reports
+
+Read these when a change intentionally spans backend API contracts and frontend behavior.
+
+- [Graph read policy implementation report](./LWS_GRAPH_READ_POLICY_IMPLEMENTATION_REPORT.md)

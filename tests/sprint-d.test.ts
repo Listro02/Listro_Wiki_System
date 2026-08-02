@@ -107,6 +107,19 @@ nodeService.createNode(
   },
   context
 );
+nodeService.createNode(
+  {
+    object: nodeFixture({
+      id: "svc.lonely",
+      title: "Lonely Public Service",
+      slug: "lonely-public-service",
+      type: "type.service",
+      visibility: "public",
+      summary: "Public node with no readable relations"
+    })
+  },
+  context
+);
 edgeService.createEdge(
   {
     object: edgeFixture({
@@ -120,11 +133,49 @@ edgeService.createEdge(
   },
   context
 );
+edgeService.createEdge(
+  {
+    object: edgeFixture({
+      id: "edge.01JPRIVATE",
+      source: "svc.lonely",
+      target: "svc.web",
+      type: "rel.references",
+      visibility: "private",
+      title: "Private relation from lonely service"
+    })
+  },
+  context
+);
 
 const reindexResult = new ReindexCommand(objectStore, validationService, indexStore).run();
 assert.equal(reindexResult.status, "succeeded");
-assert.equal(reindexResult.object_count, 4);
+assert.equal(reindexResult.object_count, 6);
 assert.equal(indexStore.getStatus().state, "ready");
+
+const db = indexStore.openReady();
+db.prepare(
+  `INSERT OR REPLACE INTO objects
+   (id, object_kind, title, type, status, visibility, detail_mode, summary, rev, created_at, updated_at, search_text)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+).run(
+  "edge.01JPLACEHOLDER",
+  "edge",
+  "Readable edge with unreadable endpoint",
+  "rel.references",
+  "active",
+  "public",
+  "note",
+  "Read-model fixture for unreadable endpoint placeholders",
+  1,
+  "2026-07-01T00:00:00+09:00",
+  "2026-07-01T00:00:00+09:00",
+  "Readable edge with unreadable endpoint"
+);
+db.prepare(
+  `INSERT OR REPLACE INTO graph_edges (edge_id, source_id, target_id, relation_type, status, visibility)
+   VALUES (?, ?, ?, ?, ?, ?)`
+).run("edge.01JPLACEHOLDER", "svc.caddy", "app.secret", "rel.references", "active", "public");
+db.close();
 
 const objectQuery = new ObjectQueryService(indexStore);
 const list = objectQuery.listObjects({ limit: 20 }, anonymous);
@@ -142,11 +193,24 @@ assert.equal(publicSearch.items.some((item: any) => item.id === "svc.caddy"), tr
 const graph = new GraphService(indexStore).getGraph({ center: "svc.caddy", depth: 1 }, anonymous);
 assert.equal(graph.edges.some((edge: any) => edge.edge_id === "edge.01JPUBLIC"), true);
 assert.equal(graph.nodes.some((node: any) => node.id === "app.secret"), false);
+assert.equal(graph.edges.some((edge: any) => edge.edge_id === "edge.01JPLACEHOLDER"), true);
+assert.equal(graph.placeholders.some((placeholder: any) => placeholder.id === "app.secret"), true);
+
+const lonelyGraph = new GraphService(indexStore).getGraph({ center: "svc.lonely", depth: 1 }, anonymous);
+assert.equal(lonelyGraph.nodes.some((node: any) => node.id === "svc.lonely"), true);
+assert.equal(lonelyGraph.edges.some((edge: any) => edge.edge_id === "edge.01JPRIVATE"), false);
+assert.equal(lonelyGraph.edges.length, 0);
 
 const edgeCenteredGraph = new GraphService(indexStore).getGraph({ center: "edge.01JPUBLIC", depth: 1 }, anonymous);
 assert.equal(edgeCenteredGraph.edges.some((edge: any) => edge.edge_id === "edge.01JPUBLIC"), true);
 assert.equal(edgeCenteredGraph.nodes.some((node: any) => node.id === "svc.caddy"), true);
 assert.equal(edgeCenteredGraph.nodes.some((node: any) => node.id === "svc.web"), true);
+
+const placeholderEdgeGraph = new GraphService(indexStore).getGraph({ center: "edge.01JPLACEHOLDER", depth: 1 }, anonymous);
+assert.equal(placeholderEdgeGraph.nodes.some((node: any) => node.id === "edge.01JPLACEHOLDER"), true);
+assert.equal(placeholderEdgeGraph.nodes.some((node: any) => node.id === "svc.caddy"), true);
+assert.equal(placeholderEdgeGraph.nodes.some((node: any) => node.id === "app.secret"), false);
+assert.equal(placeholderEdgeGraph.placeholders.some((placeholder: any) => placeholder.id === "app.secret"), true);
 
 const backlinks = new GraphService(indexStore).getBacklinks("svc.web", anonymous);
 assert.equal(backlinks.items.some((item: any) => item.edge_id === "edge.01JPUBLIC"), true);

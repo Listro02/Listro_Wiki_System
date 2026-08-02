@@ -1102,6 +1102,21 @@ h3 {
   line-height: 1.35;
 }
 
+.related-row.placeholder,
+.relation-detail-node.placeholder,
+.relation-pill.placeholder,
+.relationship-node.placeholder {
+  border-style: dashed;
+  color: var(--muted);
+  background: #12161d;
+}
+
+.related-row:disabled,
+.relation-detail-node:disabled {
+  cursor: default;
+  opacity: 0.82;
+}
+
 .graph-page {
   min-height: 100vh;
   background: var(--bg);

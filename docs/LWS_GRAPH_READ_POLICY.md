@@ -213,11 +213,11 @@ unreadable endpoint detail/history/validation
 
 anonymous 사용자는 권한 없는 object detail에 접근할 수 없다. 이 정책은 readable center 또는 readable edge를 이미 조회할 수 있는 context 안에서 graph를 어떻게 구성할지에 대한 정책이다.
 
-## 6. Current Implementation Gap
+## 6. Implementation Status
 
-현재 구현의 `GraphService.getGraph()`는 edge/source/target이 모두 visible predicate를 통과해야 edge row를 반환한다. 따라서 readable center object가 있어도 readable edge가 없으면 `nodes=[]`, `edges=[]`가 될 수 있고, readable edge의 endpoint 중 하나가 unreadable이면 edge relation 자체가 빠질 수 있다.
+현재 구현은 이 정책을 backend와 frontend에 적용한다.
 
-목표 정책에 맞추려면 다음 구현이 필요하다.
+구현된 항목:
 
 ```text
 1. center object가 readable이면 항상 nodes에 포함한다.
@@ -225,11 +225,17 @@ anonymous 사용자는 권한 없는 object detail에 접근할 수 없다. 이 
 3. readable edge는 edges에 포함한다.
 4. readable endpoint는 nodes에 포함한다.
 5. unreadable endpoint는 placeholders에 포함한다.
-6. GraphResponse에 placeholders field를 추가한다.
+6. GraphResponse에 placeholders field를 추가했다.
 7. frontend graph renderer는 placeholder endpoint를 object node와 구분해 표시한다.
 ```
 
-필수 회귀 테스트:
+구현 보고서:
+
+```text
+docs/implementation/LWS_GRAPH_READ_POLICY_IMPLEMENTATION_REPORT.md
+```
+
+필수 회귀 테스트는 다음 기준을 사용한다.
 
 ```text
 public center node + no readable edge -> nodes includes center, edges empty
@@ -238,4 +244,3 @@ public center node + readable edge + private target -> edge included, target pla
 readable center edge + one unreadable endpoint -> edge included, readable endpoint node included, unreadable endpoint placeholder included
 unreadable center object -> object detail not exposed
 ```
-

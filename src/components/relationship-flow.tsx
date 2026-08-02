@@ -29,7 +29,8 @@ type RelationshipFlowProps = {
 
 type FlowNodeData = Record<string, unknown> & {
   label: ReactNode;
-  object: ObjectRow;
+  object?: ObjectRow;
+  placeholder?: GraphResponse["placeholders"][number];
   focused: boolean;
 };
 
@@ -104,7 +105,7 @@ export function RelationshipFlow({ graph, focusId, className = "", showMiniMap =
         onInit={setInstance}
         onNodeClick={(_, node) => setActiveId(node.id)}
         onNodeDoubleClick={(_, node) => {
-          if (node.id !== focusId) {
+          if (!node.data.placeholder && node.id !== focusId) {
             onSelect?.(node.id);
           }
         }}
@@ -130,6 +131,7 @@ function buildFlowElements(graph: GraphResponse | null): { nodes: FlowNode[]; ed
   }
 
   const objectById = new Map(graph.nodes.map((object) => [object.id, object]));
+  const placeholders = graph.placeholders ?? [];
   const endpointIds = new Set<string>();
   for (const edge of graph.edges) {
     endpointIds.add(edge.source_id);
@@ -138,12 +140,16 @@ function buildFlowElements(graph: GraphResponse | null): { nodes: FlowNode[]; ed
 
   const rows = graph.nodes.filter((object) => object.object_kind === "node" && (endpointIds.has(object.id) || graph.edges.length === 0));
   const nodeRows = rows.length ? rows : graph.nodes.filter((object) => object.object_kind === "node");
+  const placeholderRows = placeholders.filter((placeholder) => endpointIds.has(placeholder.id));
   const graphlib = new dagre.graphlib.Graph({ multigraph: true });
   graphlib.setGraph({ rankdir: "LR", align: "UL", ranksep: 120, nodesep: 58, marginx: 24, marginy: 24 });
   graphlib.setDefaultEdgeLabel(() => ({}));
 
   for (const object of nodeRows) {
     graphlib.setNode(object.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+  }
+  for (const placeholder of placeholderRows) {
+    graphlib.setNode(placeholder.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
 
   const flowEdges = graph.edges
@@ -190,14 +196,43 @@ function buildFlowElements(graph: GraphResponse | null): { nodes: FlowNode[]; ed
     } satisfies Node<FlowNodeData>;
   });
 
-  return { nodes: flowNodes, edges: flowEdges };
+  const placeholderNodes = placeholderRows.map((placeholder) => {
+    const position = graphlib.node(placeholder.id) ?? { x: 0, y: 0 };
+    return {
+      id: placeholder.id,
+      type: "default",
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      position: {
+        x: position.x - NODE_WIDTH / 2,
+        y: position.y - NODE_HEIGHT / 2
+      },
+      data: {
+        label: (
+          <div className="relationship-node-label">
+            <strong>Unreadable endpoint</strong>
+            <span>{placeholder.id}</span>
+          </div>
+        ),
+        placeholder,
+        focused: false
+      },
+      className: "relationship-node placeholder"
+    } satisfies Node<FlowNodeData>;
+  });
+
+  return { nodes: [...flowNodes, ...placeholderNodes], edges: flowEdges };
 }
 
 function markActiveNodes(nodes: FlowNode[], activeId?: string): FlowNode[] {
   return nodes.map((node) => ({
     ...node,
     selected: node.id === activeId,
-    className: node.id === activeId ? "relationship-node selected" : "relationship-node",
+    className: [
+      "relationship-node",
+      node.data.placeholder ? "placeholder" : "",
+      node.id === activeId ? "selected" : ""
+    ].filter(Boolean).join(" "),
     data: {
       ...node.data,
       focused: node.id === activeId

@@ -184,6 +184,10 @@ export type GraphResponse = {
     status: string;
     visibility: Visibility;
   }>;
+  placeholders: Array<{
+    id: string;
+    kind: "unreadable_endpoint";
+  }>;
   depth: number;
 };
 

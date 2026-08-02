@@ -551,6 +551,22 @@ Workbench에서는 선택 object의 국소 관계를 먼저 보여준다.
 /graph route에서는 같은 /api/lws/graph 응답을 더 넓은 탐색 화면으로 확인할 수 있다.
 ```
 
+### 5.8 수동 검토 결과
+
+위 5번 수동 검토 계획은 모두 통과한 것으로 기록한다.
+
+통과 범위:
+
+```text
+5.1 Anonymous Read 확인
+5.2 Admin Mode 확인
+5.3 Node 생성 확인
+5.4 Edge 생성 확인
+5.5 Edit 확인
+5.6 Recovery/Reindex 확인
+5.7 관계 탐색 확인
+```
+
 ## 6. 시각 검토 자료 계획
 
 다음 검토에서는 아래 화면을 캡처해 비교하는 것이 좋다.
@@ -613,7 +629,36 @@ GET /graph
 - `/graph` route가 빌드 결과에 포함된다.
 - local-admin context에서 `sample.frontend.workbench`는 `can_update: true`로 조회된다.
 
-## 8. 알려진 후속 작업
+## 8. 한계 및 논의 필요 사항
+
+Graph 관련 기능에는 현재 중복된 표면이 있다.
+
+중복되는 영역:
+
+```text
+Object Detail > Relations tab
+Right Inspector > Related Objects
+/graph route
+```
+
+현재 `/graph` route는 Relations tab에서 이미 확인할 수 있는 centered graph 기능을 더 넓은 화면으로 노출하는 얇은 explorer이다. 따라서 독립 route로 유지할지, Relations tab 중심으로 통합할지, 혹은 `/graph`를 고급 graph explorer로 확장할지는 별도 논의가 필요하다.
+
+향후 논의할 기능:
+
+- Relations tab과 `/graph` route의 책임 분리
+- full graph 탐색, filtering, depth 조절의 위치
+- accessible graph list alternative 제공 방식
+- placeholder endpoint, edge-centered graph, definition/instance 같은 확장 정책을 어느 화면에서 주로 다룰지
+- `/graph` entry가 단순 중복이 아니라 독립 가치가 있으려면 필요한 고급 기능 범위
+
+현재 결론:
+
+```text
+Foundation Slice에서는 graph 기능을 검증하기 위해 중복 표면을 허용했다.
+다음 slice에서는 Graph 기능의 제품상 위치와 정보 구조를 다시 정리해야 한다.
+```
+
+## 9. 알려진 후속 작업
 
 - object detail 상태가 안정화되면 `/objects/[id]` 전용 route를 추가한다.
 - `/graph` route는 이번 slice에서 얇게 열어두었고, F3에서는 layout, filtering, 깊이 조절, accessible graph list alternative를 확장한다.
@@ -622,7 +667,8 @@ GET /graph
 - UI 동작이 안정화되면 Playwright 또는 route-level browser smoke test를 추가한다.
 - `next`, `postcss`, `sharp` 관련 `npm audit` finding은 별도 framework upgrade 계획으로 처리한다.
 - 기존 Turbopack NFT tracing warning은 이번 frontend slice 이전부터 있던 경고이며 별도 작업으로 정리한다.
-## 9. History Tab Addendum
+
+## 10. History Tab Addendum
 
 이번 frontend pass에서 object detail의 `History` tab을 추가했다.
 

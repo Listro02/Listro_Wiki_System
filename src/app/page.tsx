@@ -598,12 +598,12 @@ function ObjectOverview({ object, selected, validation }: { object: LwsObject; s
 function ObjectRelations({ object, graph, onSelect }: { object: LwsObject; graph: GraphResponse | null; onSelect: (id: string) => void }) {
   const relations = getRelevantEdges(object, graph);
 
-  if (!graph || relations.length === 0) {
+  if (!graph || (graph.nodes.length === 0 && (graph.placeholders?.length ?? 0) === 0)) {
     return (
       <div className="empty-relations">
         <Network size={24} />
-        <h3>No related objects</h3>
-        <p className="muted">No visible 1-hop relations were returned for this object.</p>
+        <h3>No visible graph data</h3>
+        <p className="muted">No readable center object was returned for this graph query.</p>
       </div>
     );
   }
@@ -613,11 +613,15 @@ function ObjectRelations({ object, graph, onSelect }: { object: LwsObject; graph
       <RelationshipFlow graph={graph} focusId={object.id} onSelect={onSelect} />
       <section className="subsection relation-detail-section">
         <h3>Relation Details</h3>
-        <div className="relation-detail-list">
-          {relations.map((edge) => (
-            <RelationRow edge={edge} graph={graph} selectedId={object.id} onSelect={onSelect} key={edge.edge_id} />
-          ))}
-        </div>
+        {relations.length ? (
+          <div className="relation-detail-list">
+            {relations.map((edge) => (
+              <RelationRow edge={edge} graph={graph} selectedId={object.id} onSelect={onSelect} key={edge.edge_id} />
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No readable relation edges were returned for this object.</p>
+        )}
       </section>
     </div>
   );
@@ -637,6 +641,8 @@ function RelationRow({
   const source = getGraphObject(graph, edge.source_id);
   const target = getGraphObject(graph, edge.target_id);
   const edgeObject = getGraphObject(graph, edge.edge_id);
+  const sourcePlaceholder = getGraphPlaceholder(graph, edge.source_id);
+  const targetPlaceholder = getGraphPlaceholder(graph, edge.target_id);
   const selectRelatedObject = (id: string) => {
     if (id !== selectedId) {
       onSelect(id);
@@ -645,16 +651,16 @@ function RelationRow({
 
   return (
     <div className="relation-detail-row">
-      <button className={selectedId === edge.source_id ? "relation-detail-node active" : "relation-detail-node"} type="button" onClick={() => selectRelatedObject(edge.source_id)}>
-        <span>{source?.title ?? edge.source_id}</span>
+      <button className={["relation-detail-node", selectedId === edge.source_id ? "active" : "", sourcePlaceholder ? "placeholder" : ""].filter(Boolean).join(" ")} type="button" onClick={() => selectRelatedObject(edge.source_id)} disabled={!source}>
+        <span>{source?.title ?? "Unreadable endpoint"}</span>
         <small>{edge.source_id}</small>
       </button>
       <button className={selectedId === edge.edge_id ? "relation-detail-edge active" : "relation-detail-edge"} type="button" onClick={() => selectRelatedObject(edge.edge_id)}>
         <strong>{edge.relation_type}</strong>
         <span>{edgeObject?.title ?? edge.edge_id}</span>
       </button>
-      <button className={selectedId === edge.target_id ? "relation-detail-node active" : "relation-detail-node"} type="button" onClick={() => selectRelatedObject(edge.target_id)}>
-        <span>{target?.title ?? edge.target_id}</span>
+      <button className={["relation-detail-node", selectedId === edge.target_id ? "active" : "", targetPlaceholder ? "placeholder" : ""].filter(Boolean).join(" ")} type="button" onClick={() => selectRelatedObject(edge.target_id)} disabled={!target}>
+        <span>{target?.title ?? "Unreadable endpoint"}</span>
         <small>{edge.target_id}</small>
       </button>
     </div>
@@ -1297,9 +1303,10 @@ function RelatedObjectsPanel({ object, graph, onSelect }: { object: LwsObject; g
             const source = getGraphObject(graph, edge.source_id);
             const target = getGraphObject(graph, edge.target_id);
             const neighbor = getGraphObject(graph, objectId);
+            const placeholder = getGraphPlaceholder(graph, objectId);
             return (
-              <button className="related-row" type="button" onClick={() => onSelect(objectId)} key={`${edge.edge_id}-${objectId}`}>
-                <span>{neighbor?.title ?? objectId}</span>
+              <button className={placeholder ? "related-row placeholder" : "related-row"} type="button" onClick={() => onSelect(objectId)} key={`${edge.edge_id}-${objectId}`} disabled={!neighbor}>
+                <span>{neighbor?.title ?? "Unreadable endpoint"}</span>
                 <small>
                   {source?.title ?? edge.source_id} / {edge.relation_type} / {target?.title ?? edge.target_id}
                 </small>
@@ -1472,6 +1479,10 @@ function getRelatedObjectEntries(object: LwsObject, edges: Array<GraphResponse["
 
 function getGraphObject(graph: GraphResponse | null, id: string): ObjectRow | undefined {
   return graph?.nodes.find((item) => item.id === id);
+}
+
+function getGraphPlaceholder(graph: GraphResponse | null, id: string): GraphResponse["placeholders"][number] | undefined {
+  return graph?.placeholders?.find((item) => item.id === id);
 }
 
 function compareHistoryDescending(left: ObjectHistoryLink, right: ObjectHistoryLink): number {
