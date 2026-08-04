@@ -209,6 +209,7 @@ richer Graph Explorer
 Timeline Explorer baseline modes
 Ontology Manager readonly usage view
 object-like display for type, tag, and relation type concepts
+향후 ontology system 개선은 별도 계획으로 진행한다
 ```
 
 Exit criteria:
