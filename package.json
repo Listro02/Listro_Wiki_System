@@ -21,7 +21,8 @@
     "test:milestone-m5": "node --experimental-strip-types tests/milestone-m5.test.ts",
     "test:milestone-m6": "node --experimental-strip-types tests/milestone-m6.test.ts",
     "test:milestone-m7": "node --experimental-strip-types tests/milestone-m7.test.ts",
-    "test:frontend-foundation": "node --experimental-strip-types tests/frontend-foundation.test.ts"
+    "test:frontend-foundation": "node --experimental-strip-types tests/frontend-foundation.test.ts",
+    "test:timeline": "node --experimental-strip-types tests/timeline-ad-hoc.test.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",

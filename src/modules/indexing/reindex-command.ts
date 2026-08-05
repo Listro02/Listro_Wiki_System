@@ -10,6 +10,7 @@ import type { ObjectStore } from "../storage/object-store.ts";
 import type { ValidationService } from "../validation/validation-service.ts";
 import type { IndexStore } from "./index-store.ts";
 import { INDEX_SCHEMA_VERSION } from "./sqlite-schema.ts";
+import { isPropertyTemporalIssueTarget } from "./property-temporal.ts";
 import type { JobRunContext } from "../../services/job-service.ts";
 
 export type ReindexResult = {
@@ -108,7 +109,14 @@ export class ReindexCommand {
             target: issue.target
           });
         }
-        continue;
+
+        // A legacy object with only malformed knowledge-time values remains
+        // searchable/graphable. Its normalized timeline keys are null, so it
+        // is excluded from dated Timeline queries while the issue remains
+        // visible to validation/reindex operators.
+        if (!report.issues.every((issue) => issue.target?.startsWith("temporal.") || isPropertyTemporalIssueTarget(issue.target))) {
+          continue;
+        }
       }
 
       const object = raw as LwsObject;

@@ -28,7 +28,7 @@ SQLite DB는 source of truth가 아니다. SQLite가 없어지거나 손상되�
 
 Source of truth에서 파생한 읽기용 데이터 구조다.
 
-LWS에서는 주로 SQLite table을 뜻한다. 예를 들어 `objects`, `graph_edges`, `timeline_items`, `events`, `object_history`, `account_permissions`는 projection이다.
+LWS에서는 주로 SQLite table을 뜻한다. 예를 들어 `objects`, `graph_edges`, `timeline_items`, `timeline_property_values`, `events`, `object_history`, `account_permissions`는 projection이다.
 
 Projection은 source of truth가 아니므로 삭제되거나 손상되어도 reindex로 다시 만들 수 있어야 한다.
 
@@ -123,7 +123,7 @@ SQLite schema version이 현재 backend가 기대하는 version과 다른 상태
 
 ```text
 index_meta.schema_version = 2
-현재 backend INDEX_SCHEMA_VERSION = 3
+현재 backend INDEX_SCHEMA_VERSION = 5
 ```
 
 이 경우 query code가 기대하는 table/column과 실제 DB가 다를 수 있으므로 read model을 ready로 취급하지 않는다. 일반 대응은 migration 또는 full reindex다.

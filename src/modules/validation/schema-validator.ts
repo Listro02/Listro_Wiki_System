@@ -13,6 +13,8 @@ import type {
 } from "../../shared/object-model.ts";
 import { assertSafeObjectId } from "../storage/path-resolver.ts";
 import { isAccountId } from "../ontology/builtin-ontology.ts";
+import { validateTemporalFields } from "../indexing/temporal-normalization.ts";
+import { extractPropertyTemporalValues } from "../indexing/property-temporal.ts";
 
 export type ValidationResult<T = LwsObject> = {
   ok: boolean;
@@ -133,6 +135,10 @@ function validateCommonFields(
 
   if (!isRecord(value.props)) {
     issues.push(issue("SCHEMA_INVALID", "props must be an object.", "props"));
+  } else {
+    for (const temporalIssue of extractPropertyTemporalValues(value.props).issues) {
+      issues.push(issue("SCHEMA_INVALID", temporalIssue.message, temporalIssue.target));
+    }
   }
 
   validateTemporal(value.temporal, issues);
@@ -156,6 +162,17 @@ function validateTemporal(value: unknown, issues: LwsIssue[]): value is Temporal
   for (const field of ["occurred_at", "valid_from", "valid_to"] as const) {
     if (value[field] !== null && typeof value[field] !== "string") {
       issues.push(issue("SCHEMA_INVALID", `temporal.${field} must be string or null.`, `temporal.${field}`));
+    }
+  }
+
+  if (
+    typeof value.occurred_at === "string" ||
+    typeof value.valid_from === "string" ||
+    typeof value.valid_to === "string"
+  ) {
+    const temporal = value as TemporalFields;
+    for (const temporalIssue of validateTemporalFields(temporal)) {
+      issues.push(issue("SCHEMA_INVALID", `temporal.${temporalIssue.field} ${temporalIssue.message}`, `temporal.${temporalIssue.field}`));
     }
   }
 

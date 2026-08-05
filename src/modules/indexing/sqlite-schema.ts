@@ -1,4 +1,4 @@
-export const INDEX_SCHEMA_VERSION = 3;
+export const INDEX_SCHEMA_VERSION = 5;
 
 export const CREATE_INDEX_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS index_meta (
@@ -65,8 +65,35 @@ CREATE TABLE IF NOT EXISTS timeline_items (
   occurred_at TEXT,
   valid_from TEXT,
   valid_to TEXT,
+  occurred_at_key INTEGER,
+  valid_from_key INTEGER,
+  valid_to_key INTEGER,
+  occurred_at_precision TEXT,
+  valid_from_precision TEXT,
+  valid_to_precision TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  created_at_key INTEGER,
+  updated_at_key INTEGER,
+  created_at_precision TEXT,
+  updated_at_precision TEXT
+);
+
+CREATE TABLE IF NOT EXISTS timeline_property_values (
+  object_id TEXT NOT NULL,
+  property_path TEXT NOT NULL,
+  time_kind TEXT NOT NULL,
+  at_value TEXT,
+  start_value TEXT,
+  end_value TEXT,
+  at_key INTEGER,
+  start_key INTEGER,
+  end_key INTEGER,
+  at_precision TEXT,
+  start_precision TEXT,
+  end_precision TEXT,
+  projection_status TEXT NOT NULL,
+  PRIMARY KEY (object_id, property_path)
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -152,7 +179,15 @@ CREATE INDEX IF NOT EXISTS idx_objects_type ON objects (type);
 CREATE INDEX IF NOT EXISTS idx_object_tags_tag ON object_tags (tag_id);
 CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges (source_id);
 CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges (target_id);
-CREATE INDEX IF NOT EXISTS idx_timeline_updated ON timeline_items (updated_at);
+CREATE INDEX IF NOT EXISTS idx_timeline_occurred_key ON timeline_items (occurred_at_key);
+CREATE INDEX IF NOT EXISTS idx_timeline_valid_from_key ON timeline_items (valid_from_key);
+CREATE INDEX IF NOT EXISTS idx_timeline_valid_to_key ON timeline_items (valid_to_key);
+CREATE INDEX IF NOT EXISTS idx_timeline_kind_occurred_key ON timeline_items (object_kind, occurred_at_key);
+CREATE INDEX IF NOT EXISTS idx_timeline_kind_valid_range ON timeline_items (object_kind, valid_from_key, valid_to_key);
+CREATE INDEX IF NOT EXISTS idx_timeline_created_key ON timeline_items (created_at_key, object_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_updated_key ON timeline_items (updated_at_key, object_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_property_point ON timeline_property_values (property_path, at_key, object_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_property_interval ON timeline_property_values (property_path, start_key, end_key, object_id);
 CREATE INDEX IF NOT EXISTS idx_events_object ON events (object_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_object_history_object ON object_history (object_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_object_scope_memberships_object ON object_scope_memberships (object_id, scope_id);
@@ -166,6 +201,7 @@ DELETE FROM edges;
 DELETE FROM object_tags;
 DELETE FROM graph_edges;
 DELETE FROM timeline_items;
+DELETE FROM timeline_property_values;
 DELETE FROM events;
 DELETE FROM object_history;
 DELETE FROM validation_issues;

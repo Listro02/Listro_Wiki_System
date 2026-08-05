@@ -321,6 +321,130 @@ Slice C — curated mutation: term change/deprecate -> impact 확인 -> history 
 
 초기 non-goal은 general semantic-web exchange format, universal reasoning, automatic mutation/inference, automatic mass migration, public ontology management다.
 
+## Props temporal convention과 향후 Ontology 연결
+
+[LWS_PROPS_CONVENTION.md](../LWS_PROPS_CONVENTION.md)의 Inline temporal wrapper는 현재 instance가 `$temporal`을 직접 선언하는 공식 source convention이다. 이번 Timeline 구현은 Type/Definition node를 조회해 wrapper를 추론하지 않는다.
+
+향후 Ontology materialization에서는 Type 또는 Definition node가 허용 property path, `$value` shape, point/interval kind를 명세하고 instance wrapper를 validation할 수 있다. 개별 시간값은 Node로 reify하지 않으며 source wrapper와 SQLite temporal projection을 유지한다.
+
+## Scope와 Collection의 ontology 역할 및 중복 해소
+
+현재 구현에서 `scope.*`와 `collection.*`은 모두 `rel.contains`로부터 생성한
+`object_scope_memberships` projection으로 조회된다. Timeline의 Scope/Collection filter와
+grouping도 같은 membership read model을 사용한다. 또한 현재 permission vocabulary는
+`rel.can_read_in`, `rel.can_create_in`, `rel.can_update_in`의 target으로 Scope와 Collection을
+모두 허용한다. 이 상태에서는 "특정 group에 속한다"는 사실과 "그 group의 policy가 적용된다"는
+사실이 사실상 겹치므로, 두 concept를 분리해 둔 의미가 약해진다.
+
+| 선택지 | 장점 | 문제 |
+| --- | --- | --- |
+| 단일 Container로 통합 | model과 query가 단순하다. | governance boundary와 개인/주제별 분류를 구별할 수 없다. |
+| Scope와 Collection을 모두 permission target으로 유지 | 현재 호환성이 가장 높다. | Collection membership이 예상 밖의 권한 경계가 되며 policy 추적이 어려워진다. |
+| Scope만 authority boundary로 두고 Collection을 non-authoritative grouping으로 둔다 | 권한의 근거와 탐색/분류의 근거가 명확히 분리된다. | 기존 Collection-target permission의 migration/호환 정책이 필요하다. |
+
+Ontology의 잠정 권고는 세 번째 선택지다. 이는 두 storage 형태를 당장 분리하자는 뜻이 아니라,
+동일한 Node-first graph 위에 서로 다른 semantic role을 명시하자는 뜻이다.
+
+```text
+Scope (type.scope)
+  = access policy와 governance를 소유할 수 있는 authority boundary.
+  = rel.can_read_in / rel.can_create_in / rel.can_update_in / rel.can_manage_in의
+    canonical target이 될 수 있다.
+
+Collection (type.collection)
+  = 탐색, 분류, 작업 단위, 표현을 위한 non-authoritative grouping/facet.
+  = membership 자체로 read/write/manage 권한을 부여하거나 상속하지 않는다.
+  = 여러 Scope의 Object를 모을 수 있지만, 조회자는 각 Object의 별도 Scope/Object policy를
+    통과해야 한다.
+```
+
+따라서 Object가 Collection에 속한다는 것은 "함께 보거나 다룰 이유가 있다"는 assertion이고,
+권한은 Object 직접 policy 또는 그 Object가 속한 Scope policy에서만 판정한다. Collection을
+permission target으로 사용해야 하는 요구가 남는다면, Collection 자체를 policy-bearing Scope로
+재분류하거나, 명시적인 delegation relation으로 어떤 Scope policy를 위임받는지를 선언해야 한다.
+암묵적인 Collection membership을 권한으로 해석하지 않는다.
+
+`scope.wiki`는 이 규칙에서 ordinary membership Scope가 아니라 built-in global/root query
+context다. 모든 Object에 물리적 membership을 생성하거나 `scope.wiki`에 대한 권한을
+자동 상속하지 않는다. 즉 `scope=scope.wiki`는 membership narrowing 없이 permission-aware
+global query를 의미하며, `rel.can_read_in -> scope.wiki`가 모든 Object 공개를 뜻해서는 안 된다.
+
+현행 `object_scope_memberships`라는 projection 명칭은 Scope와 Collection을 함께 담는 실제
+역할을 충분히 드러내지 못한다. ontology migration 단계에서는 `object_container_memberships`로
+rename하거나 `container_kind`를 추가하는 방안을 검토한다. 단, 이는 source Node/Edge를
+새로 만드는 작업이 아니라 재생성 가능한 read projection의 정리다.
+
+이 결정 전에는 기존 Collection-target permission을 자동 제거하거나 Collection Object를
+자동 재분류하지 않는다. 먼저 inventory와 advisory validation으로 다음을 확인한다.
+
+- permission edge의 target이 Scope인지 Collection인지, 그리고 실제 사용 여부
+- 한 Object의 multi-Scope membership과 cross-Scope Collection membership 현황
+- Collection policy를 유지해야 하는 실질적 use case와 Scope delegation으로 대체 가능한지
+- `scope.wiki`를 global query context로 유지할 때 root policy가 필요한 별도 use case가 있는지
+
+### Phase 0에 추가할 결정
+
+1. Scope를 authority boundary, Collection을 non-authoritative grouping으로 확정할지
+2. permission target을 Scope와 Object 직접 policy로 제한할지, Collection delegation을 별도로 둘지
+3. Collection-target permission, multi-Scope membership, cross-Scope Collection의 migration/compatibility 정책
+4. `scope.wiki`를 global query context로 유지할 때 root policy가 필요한 별도 use case가 있는지
+
+### 결정 갱신: Scope와 Collection을 단일 Group ontology로 통합
+
+앞 절의 선택지 분석을 거쳐, ontology의 목표 model에서는 Scope와 Collection을 별도
+semantic kind로 고정하지 않는다. 둘은 `type.group` (명칭은 materialization 전에 확정)이라는
+하나의 first-class Node concept로 통합한다. 기존 `scope.*`, `collection.*` ID와 API parameter는
+호환을 위해 당분간 유지할 수 있지만, ontology상 canonical distinction은 아니다.
+
+```text
+Group
+  = Object를 포함하거나 함께 탐색·분류·표현하기 위한 first-class Node.
+
+Membership
+  = Object --rel.contains--> Group 또는 Group --rel.contains--> Object로 표현되는
+    containment assertion이며, 그 자체만으로 권한을 부여하지 않는다.
+
+Group policy
+  = rel.can_read_in / rel.can_create_in / rel.can_update_in / rel.can_manage_in 같은
+    명시적 permission relation이 Group을 target으로 가질 때에만 활성화된다.
+```
+
+따라서 하나의 Group은 policy 없는 단순 navigation group일 수도, 명시적 policy를 가진
+authority boundary일 수도 있다. 두 경우를 Type이나 prefix로 분리하지 않고 permission
+relation의 존재와 그 rule로 구분한다. 이는 “어떤 그룹에 속함”과 “그 그룹의 권한이 적용됨”을
+혼동하지 않으면서, 두 체계가 공유하던 containment model을 하나로 만든다.
+
+통합 model의 ontology 규칙은 다음과 같다.
+
+1. Group membership은 authorization grant가 아니다.
+2. Object에 적용되는 권한은 Object 직접 policy 또는 그 Object가 member인 Group의 명시적 policy에서만 도출한다.
+3. 여러 Group policy가 동시에 적용될 때의 allow/deny, 우선순위, inheritance, 관리 권한의 범위는 별도 axiom으로 명시하며 암묵적으로 추론하지 않는다.
+4. `rel.can_manage_in`은 Group membership을 편집하거나 Group policy를 관리할 권한을 뜻할 수 있으나, 모든 member Object의 content update 권한과 자동으로 동일시하지 않는다.
+5. Group은 여러 Object를 포함할 수 있고 Object도 여러 Group에 속할 수 있다. cross-group membership은 허용하되, visibility는 각 Object의 최종 permission predicate로 다시 판정한다.
+6. Timeline/filter/grouping projection은 Group membership을 읽지만, query 결과의 permission filtering은 Group 이름이나 membership만으로 우회되지 않는다.
+
+### `scope.wiki`의 현행 의미와 개선 논의
+
+현재 `scope.wiki`는 ordinary membership이나 permission policy를 뜻하지 않는 built-in
+global/root query context다. Timeline에서 `scope=scope.wiki`는 membership narrowing을 하지
+않고 readable Object 전체를 조회하는 호환 규칙으로 동작한다. 이는 `scope.wiki`에 속하면
+자동으로 읽을 수 있다는 뜻도, `rel.can_read_in -> scope.wiki`가 모든 Object를 공개한다는
+뜻도 아니다.
+
+Scope라는 ontology kind를 없애면 이 예외 명칭도 장기적으로 정리해야 한다. 단, 모든 Object에
+물리적인 root membership을 만들거나 root Group policy를 자동 상속하는 방식은 권한 경계를
+희석할 수 있으므로 이번 결정에 포함하지 않는다. 다음 migration 논의가 필요하다.
+
+- `scope.wiki`를 계속 compatibility alias로 둘지, `group.wiki` 또는 `workspace.wiki` 같은 root query context로 rename할지
+- global query context와 policy-bearing root Group을 별도 Node/개념으로 둘지
+- 기존 `scope.*`/`collection.*` containment 및 permission edge의 inventory와 canonical `type.group` materialization 방식
+- API의 `scope`, `collection` filter를 하나의 `group` filter로 통합할 시점과 URL/API backward compatibility
+- 기존 `object_scope_memberships` projection을 `object_group_memberships` 또는 generic container projection으로 교체할 migration
+
+초기 단계에서는 source Node/Edge를 자동 retype하거나 permission을 변경하지 않는다. inventory,
+advisory validation, dual-read compatibility를 먼저 제공하고, policy conflict와 root semantics가
+명세된 뒤에만 canonical Group model로 migration한다.
+
 Open decision:
 
 1. definition과 axiom을 초기부터 first-class node type으로 둘지, definition content를 우선 term node에 둘지

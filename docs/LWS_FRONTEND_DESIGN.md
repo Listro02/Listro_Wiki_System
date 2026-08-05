@@ -1,5 +1,11 @@
 # L.W.S. Frontend Design
 
+## Timeline Inspector and Coverage Drawer (2026-08-05)
+
+Timeline has one right sidebar with `closed`, `selection`, and `coverage` modes. Node/Edge selection opens an inspector; Edge detail is fetched only when the Edge is selected. Coverage opens the same drawer and fetches its object list only when a non-zero state tab is opened. The initial Timeline response carries coverage counts only.
+
+The client caches coverage pages by normalized Timeline query, state, and index revision. Filter, time basis, center, admin context, refresh, or revision changes invalidate the cache and selection. Search filters use a draft combobox: debounced search does not update the Timeline; selecting a candidate or pressing Apply performs the single URL/API update. Dates similarly remain drafts until valid ISO input is committed.
+
 작성일: 2026-07-31
 
 ## 1. Purpose
@@ -1290,3 +1296,9 @@ The first useful frontend slice should be deliberately small.
 ```
 
 If this slice feels useful with real data, L.W.S. is ready to move from backend v1 completion into frontend alpha operation.
+
+## Timeline Time Basis Extension (2026-08-05)
+
+`/timeline`은 Created를 기본값으로 사용하고 Last updated, Occurred, Valid interval, Custom props를 선택할 수 있다. Custom props는 `/props/...` JSON Pointer draft를 입력한 뒤 Apply할 때만 URL과 API query를 갱신한다.
+
+Summary는 selected basis의 dated/undated와 Custom의 declared/missing/invalid coverage를 구분한다. Last updated는 현재 revision의 최신 시각이며 전체 mutation sequence가 아니라는 안내를 표시한다. Scene은 source field와 무관하게 Backend `position` contract만 렌더링한다.

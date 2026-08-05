@@ -7,6 +7,8 @@ import type { GlobalMutationEvent, ObjectHistoryLink } from "../events/event-typ
 import type { LwsEdge, LwsNode, LwsObject } from "../../shared/object-model.ts";
 import { LwsError } from "../../shared/errors.ts";
 import { CLEAR_PROJECTION_SQL, CREATE_INDEX_SCHEMA_SQL, INDEX_SCHEMA_VERSION } from "./sqlite-schema.ts";
+import { normalizeTemporal } from "./temporal-normalization.ts";
+import { extractPropertyTemporalValues } from "./property-temporal.ts";
 
 export type IndexState = "ready" | "INDEX_STALE" | "INDEX_REBUILD_REQUIRED" | "INDEX_CORRUPT" | "INDEX_SCHEMA_MISMATCH";
 
@@ -124,19 +126,53 @@ export class IndexStore {
       db.prepare("INSERT OR REPLACE INTO object_tags (object_id, tag_id) VALUES (?, ?)").run(object.id, tag);
     }
 
+    const occurred = object.temporal.occurred_at ? normalizeTemporal(object.temporal.occurred_at, "start") : null;
+    const validFrom = object.temporal.valid_from ? normalizeTemporal(object.temporal.valid_from, "start") : null;
+    const validTo = object.temporal.valid_to ? normalizeTemporal(object.temporal.valid_to, "end") : null;
+    const created = normalizeTemporal(object.audit.created_at, "start");
+    const updated = normalizeTemporal(object.audit.updated_at, "start");
+    const reversedValidity = Boolean(validFrom && validTo && validFrom.key > validTo.key);
+
     db.prepare(
       `INSERT OR REPLACE INTO timeline_items
-        (object_id, object_kind, occurred_at, valid_from, valid_to, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+        (object_id, object_kind, occurred_at, valid_from, valid_to,
+         occurred_at_key, valid_from_key, valid_to_key,
+         occurred_at_precision, valid_from_precision, valid_to_precision, created_at, updated_at,
+         created_at_key, updated_at_key, created_at_precision, updated_at_precision)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       object.id,
       object.object_kind,
       object.temporal.occurred_at,
       object.temporal.valid_from,
       object.temporal.valid_to,
+      occurred?.key ?? null,
+      reversedValidity ? null : validFrom?.key ?? null,
+      reversedValidity ? null : validTo?.key ?? null,
+      occurred?.precision ?? null,
+      reversedValidity ? null : validFrom?.precision ?? null,
+      reversedValidity ? null : validTo?.precision ?? null,
       object.audit.created_at,
-      object.audit.updated_at
+      object.audit.updated_at,
+      created?.key ?? null,
+      updated?.key ?? null,
+      created?.precision ?? null,
+      updated?.precision ?? null
     );
+
+    for (const value of extractPropertyTemporalValues(object.props).values) {
+      db.prepare(
+        `INSERT OR REPLACE INTO timeline_property_values
+          (object_id, property_path, time_kind, at_value, start_value, end_value,
+           at_key, start_key, end_key, at_precision, start_precision, end_precision, projection_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        object.id, value.property_path, value.time_kind,
+        value.at_value, value.start_value, value.end_value,
+        value.at_key, value.start_key, value.end_key,
+        value.at_precision, value.start_precision, value.end_precision, value.projection_status
+      );
+    }
 
     if (object.object_kind === "node") {
       this.insertNode(db, object);
@@ -432,6 +468,7 @@ export class IndexStore {
     db.prepare("DELETE FROM edges WHERE id = ?").run(objectId);
     db.prepare("DELETE FROM graph_edges WHERE edge_id = ?").run(objectId);
     db.prepare("DELETE FROM timeline_items WHERE object_id = ?").run(objectId);
+    db.prepare("DELETE FROM timeline_property_values WHERE object_id = ?").run(objectId);
   }
 
   private insertEdge(db: DatabaseSync, edge: LwsEdge): void {
@@ -480,6 +517,7 @@ DROP TABLE IF EXISTS edges;
 DROP TABLE IF EXISTS object_tags;
 DROP TABLE IF EXISTS graph_edges;
 DROP TABLE IF EXISTS timeline_items;
+DROP TABLE IF EXISTS timeline_property_values;
 DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS object_history;
 DROP TABLE IF EXISTS validation_issues;

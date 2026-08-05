@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, DatabaseZap, FilePlus2, GitBranch, GitCommitHorizontal, History as HistoryIcon, MoreHorizontal, Network, RefreshCw, Save, Search, Shield, SquarePen } from "lucide-react";
+import { AlertTriangle, Clock3, DatabaseZap, FilePlus2, GitBranch, GitCommitHorizontal, History as HistoryIcon, MoreHorizontal, Network, RefreshCw, Save, Search, Shield, SquarePen } from "lucide-react";
 
 import { RelationshipFlow } from "../components/relationship-flow";
 import { Badge, Button, Dialog, DropdownMenu, IconButton, Panel, Select, Switch, Tabs } from "../components/ui";
@@ -72,6 +72,7 @@ type AdminMode = {
 
 const KIND_FILTERS = ["all", "node", "edge"] as const;
 const STORED_ADMIN_SECRET = "lws.localAdminSecret";
+const STORED_ADMIN_ENABLED = "lws.localAdminEnabled";
 const EMPTY_AUTH = { adminMode: false, localAdminSecret: "" };
 
 export default function Page() {
@@ -80,7 +81,10 @@ export default function Page() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adminMode, setAdminMode] = useState<AdminMode>({ enabled: false, secret: "", persist: false });
   const [createKind, setCreateKind] = useState<ObjectKind | null>(null);
+  const [urlObjectId, setUrlObjectId] = useState<string | null | undefined>(undefined);
   const [adminJob, setAdminJob] = useState<AdminJob | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const loadRequestVersion = useRef(0);
   const [state, setState] = useState<WorkbenchState>({
     status: null,
     session: null,
@@ -97,18 +101,24 @@ export default function Page() {
   useEffect(() => {
     const stored = window.sessionStorage.getItem(STORED_ADMIN_SECRET);
     if (stored) {
-      setAdminMode({ enabled: true, secret: stored, persist: true });
+      setAdminMode({ enabled: window.sessionStorage.getItem(STORED_ADMIN_ENABLED) !== "false", secret: stored, persist: true });
     }
+  }, []);
+
+  useEffect(() => {
+    setUrlObjectId(new URLSearchParams(window.location.search).get("object"));
   }, []);
 
   useEffect(() => {
     if (adminMode.persist && adminMode.secret) {
       window.sessionStorage.setItem(STORED_ADMIN_SECRET, adminMode.secret);
+      window.sessionStorage.setItem(STORED_ADMIN_ENABLED, String(adminMode.enabled));
       return;
     }
 
     window.sessionStorage.removeItem(STORED_ADMIN_SECRET);
-  }, [adminMode.persist, adminMode.secret]);
+    window.sessionStorage.removeItem(STORED_ADMIN_ENABLED);
+  }, [adminMode.enabled, adminMode.persist, adminMode.secret]);
 
   const auth = useMemo(
     () => ({
@@ -131,6 +141,7 @@ export default function Page() {
   );
 
   async function loadWorkbench(nextSelectedId: string | null | undefined = selectedId) {
+    const requestVersion = ++loadRequestVersion.current;
     setState((current) => ({ ...current, loading: true, error: null }));
 
     let status: StatusResponse | null = null;
@@ -139,6 +150,7 @@ export default function Page() {
     try {
       [status, session] = await Promise.all([client.getStatus(), client.getSession()]);
     } catch (error) {
+      if (requestVersion !== loadRequestVersion.current) return;
       setState((current) => ({
         ...current,
         error: toApiError(error),
@@ -146,6 +158,8 @@ export default function Page() {
       }));
       return;
     }
+
+    if (requestVersion !== loadRequestVersion.current) return;
 
     try {
       const [objects, timeline, ontology] = await Promise.all([
@@ -163,6 +177,7 @@ export default function Page() {
         : await Promise.all([safeOptional(() => client.getGraph()), Promise.resolve(null), Promise.resolve(null)]);
 
       setSelectedId(selectedCandidate);
+      if (requestVersion !== loadRequestVersion.current) return;
       setState({
         status,
         session,
@@ -176,6 +191,7 @@ export default function Page() {
         loading: false
       });
     } catch (error) {
+      if (requestVersion !== loadRequestVersion.current) return;
       setSelectedId(null);
       setState({
         status,
@@ -193,8 +209,11 @@ export default function Page() {
   }
 
   useEffect(() => {
-    void loadWorkbench(null);
-  }, [objectParams]);
+    if (urlObjectId === undefined) {
+      return;
+    }
+    void loadWorkbench(urlObjectId);
+  }, [client, objectParams, refreshVersion, urlObjectId]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -231,7 +250,8 @@ export default function Page() {
         status={state.status}
         session={state.session}
         onAdminModeChange={setAdminMode}
-        onRefresh={() => void loadWorkbench(selectedId)}
+        refreshing={state.loading}
+        onRefresh={() => setRefreshVersion((version) => version + 1)}
         onCreateNode={() => setCreateKind("node")}
         onCreateEdge={() => setCreateKind("edge")}
       />
@@ -304,6 +324,7 @@ function AppShellTopbar({
   adminMode,
   status,
   session,
+  refreshing,
   onAdminModeChange,
   onRefresh,
   onCreateNode,
@@ -312,6 +333,7 @@ function AppShellTopbar({
   adminMode: AdminMode;
   status: StatusResponse | null;
   session: SessionResponse | null;
+  refreshing: boolean;
   onAdminModeChange: (mode: AdminMode) => void;
   onRefresh: () => void;
   onCreateNode: () => void;
@@ -346,6 +368,9 @@ function AppShellTopbar({
         <a className="button ghost" href="/graph">
           <Network size={15} /> Graph
         </a>
+        <a className="button ghost" href="/timeline">
+          <Clock3 size={15} /> Timeline
+        </a>
 
         <div className="admin-mode">
           <Switch
@@ -370,8 +395,8 @@ function AppShellTopbar({
           <Badge tone={adminEnabled ? "good" : adminMode.enabled ? "warn" : "neutral"}>{adminEnabled ? "armed" : adminMode.enabled ? "blocked" : "off"}</Badge>
         </div>
 
-        <IconButton label="Refresh workbench" onClick={onRefresh}>
-          <RefreshCw size={16} />
+        <IconButton label={refreshing ? "Refreshing workbench" : "Refresh workbench"} onClick={onRefresh} aria-busy={refreshing}>
+          <RefreshCw size={16} className={refreshing ? "refreshing-icon" : undefined} />
         </IconButton>
       </div>
     </section>

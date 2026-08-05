@@ -16,7 +16,9 @@ import type {
   PatchRecord,
   SessionResponse,
   StatusResponse,
+  TemporalCoverageResponse,
   TimelineResponse,
+  TimelineQuery,
   ValidationReport,
   Visibility
 } from "./types";
@@ -40,6 +42,20 @@ export type ObjectListParams = {
   include_permissions?: boolean;
 };
 
+export type TimelineParams = Partial<Omit<TimelineQuery, "basis" | "temporal_state" | "status" | "group_by" | "depth" | "limit">> & {
+  basis?: TimelineQuery["basis"];
+  temporal_state?: TimelineQuery["temporal_state"];
+  status?: string;
+  group_by?: TimelineQuery["group_by"];
+  depth?: number;
+  limit?: number;
+  cursor?: string;
+};
+
+export type TemporalCoverageParams = Omit<TimelineParams, "temporal_state" | "group_by" | "from" | "to"> & {
+  state: "undated" | "missing" | "invalid";
+};
+
 export type LwsClient = ReturnType<typeof createLwsClient>;
 
 export function createLwsClient(auth: LwsAuthContext, fetcher: Fetcher = defaultFetcher) {
@@ -56,7 +72,8 @@ export function createLwsClient(auth: LwsAuthContext, fetcher: Fetcher = default
     getHistoryDiff: (id: string, eventId: string) =>
       request<PatchRecord>(`/api/lws/objects/${encodeURIComponent(id)}/history/${encodeURIComponent(eventId)}/diff`, { auth, fetcher }),
     getGraph: (center?: string) => request<GraphResponse>(withQuery("/api/lws/graph", { center, depth: center ? 1 : undefined }), { auth, fetcher }),
-    getTimeline: () => request<TimelineResponse>("/api/lws/timeline", { auth, fetcher }),
+    getTimeline: (params: TimelineParams = {}) => request<TimelineResponse>(withQuery("/api/lws/timeline", params), { auth, fetcher }),
+    getTemporalCoverage: (params: TemporalCoverageParams) => request<TemporalCoverageResponse>(withQuery("/api/lws/temporal-coverage", params), { auth, fetcher }),
     getOntology: () => request<OntologyResponse>("/api/lws/ontology", { auth, fetcher }),
     createNode: (object: LwsNode, summary?: string, target_scope?: string) =>
       request<MutationResult<LwsNode>>("/api/lws/nodes", {

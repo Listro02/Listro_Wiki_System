@@ -1,5 +1,9 @@
 # L.W.S. Backend Design
 
+## Temporal coverage read API (2026-08-05)
+
+`GET /api/lws/temporal-coverage` is a read-model API for `undated`, `missing`, and `invalid` temporal values. It shares Timeline's permission-aware base filter builder and temporal classifier; a coverage count and its listed objects therefore have one classification rule. Coverage deliberately has no `from`, `to`, or `group_by`: it is a data-quality view of the selected basis, not another time-axis query. Its opaque keyset cursor binds normalized filters, requested state, index revision, title, and object ID. The API returns only permission-safe object summaries.
+
 ## 1. 목적
 
 L.W.S. backend는 지정된 L.W.S. storage root 아래의 JSON 기반 knowledge graph를 안전하게 다루기 위한 server-side layer이다.
@@ -3016,6 +3020,13 @@ advanced observability:
 advanced permission administration UI:
   backend는 permission edge와 projection을 지원한다.
   복잡한 role designer, policy simulator, permission diff/approval workflow는 초기 범위 밖이다.
+
+Explicit Props Temporal Projection (2026-08-05):
+  Custom Timeline time은 LWS_PROPS_CONVENTION.md의 $value/$temporal Inline wrapper만 허용한다.
+  일반 props scalar는 날짜처럼 보여도 자동 추론하거나 projection하지 않는다.
+  SQLite schema version 5는 audit normalized key와 timeline_property_values를 제공한다.
+  GET /api/lws/timeline basis는 created|updated|occurred|valid|custom이며 기본값은 created다.
+  Custom은 time_path=/props/...를 요구하며 permission/filter와 같은 SQL boundary에서 조회한다.
 
 visual diff merge editor:
   backend는 diff API와 restore mutation을 제공한다.

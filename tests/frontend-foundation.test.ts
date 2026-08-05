@@ -12,6 +12,34 @@ import {
   nodeToDraft
 } from "../src/lib/lws-api/drafts.ts";
 import type { LwsEdge, LwsNode } from "../src/lib/lws-api/types.ts";
+import { parseTimelineSearch, updateTimelineSearch } from "../src/lib/timeline/url-state.ts";
+import { parseTimelineDrillHistory, serializeTimelineDrillHistory } from "../src/lib/timeline/drill-history.ts";
+
+const defaultTimeline = parseTimelineSearch(new URLSearchParams());
+assert.equal(defaultTimeline.basis, "created");
+assert.equal(defaultTimeline.kind, "node");
+assert.equal(defaultTimeline.temporal_state, "dated");
+
+const customTimeline = parseTimelineSearch(new URLSearchParams("basis=custom&time_path=%2Fprops%2Frelease&cursor=opaque"));
+assert.equal(customTimeline.basis, "custom");
+assert.equal(customTimeline.time_path, "/props/release");
+assert.equal(customTimeline.cursor, "opaque");
+
+const appliedCustom = updateTimelineSearch(
+  new URLSearchParams("basis=custom&time_path=%2Fprops%2Fold&cursor=opaque"),
+  { basis: "custom", time_path: "/props/release" }
+);
+assert.equal(appliedCustom.get("time_path"), "/props/release");
+assert.equal(appliedCustom.get("cursor"), null);
+assert.equal(parseTimelineSearch(appliedCustom).time_path, "/props/release");
+
+const drillHistory = parseTimelineDrillHistory(serializeTimelineDrillHistory([
+  { from: null, to: null, granularity: "auto" },
+  { from: "2026-08-01", to: "2026-08-01", granularity: "day" }
+])!);
+assert.equal(drillHistory.length, 2);
+assert.deepEqual(drillHistory.at(-1), { from: "2026-08-01", to: "2026-08-01", granularity: "day" });
+assert.deepEqual(parseTimelineDrillHistory("not-json"), []);
 
 assert.equal(shouldAttachLocalAdmin({ adminMode: true, localAdminSecret: "secret", env: "development" }), true);
 assert.equal(shouldAttachLocalAdmin({ adminMode: true, localAdminSecret: "secret", env: "production" }), false);
