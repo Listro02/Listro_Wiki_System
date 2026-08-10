@@ -1,5 +1,10 @@
 # L.W.S. Ad-hoc Knowledge Timeline 구현 보고서
 
+> Ontology status (2026-08-06): 이 보고서의 `scope`, `collection`,
+> `object_scope_memberships`는 구현 완료 당시의 current contract다. Canonical Group
+> filter/grouping은 [LWS_ONTOLOGY_MODEL.md](../../LWS_ONTOLOGY_MODEL.md)과
+> [migration plan](../../plans/LWS_GROUP_ONTOLOGY_MIGRATION_PLAN.md)의 dual-read 단계 이후 도입한다.
+
 작성일: 2026-08-05  
 최종 정리: 2026-08-05
 

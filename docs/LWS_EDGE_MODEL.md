@@ -2,6 +2,11 @@
 
 `props`의 custom time 표현은 [LWS_PROPS_CONVENTION.md](./LWS_PROPS_CONVENTION.md)의 Inline temporal wrapper를 따른다.
 
+> Ontology status (2026-08-06): `rel.contains`와 permission Relation의 current validation은
+> endpoint existence 중심이며 Relation별 semantic role을 강제하지 않는다. Canonical Group
+> membership, permission target와 advisory validation target은
+> [LWS_ONTOLOGY_MODEL.md](./LWS_ONTOLOGY_MODEL.md)를 따른다.
+
 이 문서는 L.W.S.의 `edge` object를 backend 구현 기준으로 정리한다.
 
 Edge는 node와 node 사이의 관계이다. 단순 연결에서 시작할 수 있지만, summary, temporal, evidence, content를 가진 설명 가능한 edge page로 확장될 수 있다.

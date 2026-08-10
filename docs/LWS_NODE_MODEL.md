@@ -2,6 +2,11 @@
 
 `props`의 custom time 표현은 [LWS_PROPS_CONVENTION.md](./LWS_PROPS_CONVENTION.md)의 Inline temporal wrapper를 따른다.
 
+> Ontology status (2026-08-06): 이 문서의 `scope.*`, `collection.*`, `group.*` 설명은
+> current/legacy backend contract다. Target ontology는 Scope와 Collection을 canonical
+> [`type.group`](./LWS_ONTOLOGY_MODEL.md)으로 통합하며, 기존 ID와 Type은 migration 기간의
+> Compatibility surface로 유지한다.
+
 이 문서는 L.W.S.의 `node` object를 backend 구현 기준으로 정리한다.
 
 Node는 지식의 대상이다. 일반 wiki page뿐 아니라 tag, node type, relation type, graph view, timeline view, setting 같은 wiki 구조 자체도 node로 표현한다.

@@ -1,5 +1,10 @@
 # L.W.S. Frontend Design
 
+> Ontology status (2026-08-06): 현재 Timeline UI의 Scope/Collection filter는 legacy API
+> surface다. Canonical `group` filter와 URL dual-read는
+> [Group Ontology Migration Plan](./plans/LWS_GROUP_ONTOLOGY_MIGRATION_PLAN.md)의 후속 단계이며
+> 이번 문서 정리에서 UI/API를 변경하지 않는다.
+
 ## Timeline Inspector and Coverage Drawer (2026-08-05)
 
 Timeline has one right sidebar with `closed`, `selection`, and `coverage` modes. Node/Edge selection opens an inspector; Edge detail is fetched only when the Edge is selected. Coverage opens the same drawer and fetches its object list only when a non-zero state tab is opened. The initial Timeline response carries coverage counts only.

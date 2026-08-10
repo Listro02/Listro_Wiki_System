@@ -38,11 +38,14 @@ L.W.S.는 단순한 wiki page editor가 아니라, configured storage root 아�
 | [LWS_NODE_MODEL.md](./LWS_NODE_MODEL.md) | node object shape, required/optional fields, node type/tag/ontology validation 기준 |
 | [LWS_EDGE_MODEL.md](./LWS_EDGE_MODEL.md) | edge object shape, relation type, source/target boundary, first-class relationship validation 기준 |
 | [LWS_PROPS_CONVENTION.md](./LWS_PROPS_CONVENTION.md) | 자유 `props`와 `$value`/`$temporal` Inline temporal wrapper의 공식 convention |
+| [LWS_ONTOLOGY_MODEL.md](./LWS_ONTOLOGY_MODEL.md) | 실제 구현 inventory, canonical Group ontology contract, unresolved permission decision과 advisory validation backlog |
 | [LWS_GRAPH_READ_POLICY.md](./LWS_GRAPH_READ_POLICY.md) | graph/search 계열 조회에서 readable center, readable edge, unreadable endpoint placeholder를 다루는 정책 |
 | [LWS_PRECEDENT_RESEARCH.md](./LWS_PRECEDENT_RESEARCH.md) | node-centered wiki/knowledge system 선례 조사와 L.W.S. 설계 교훈 |
 | [LWS_PUBLIC_RELEASE_SECURITY_STRATEGY.md](./LWS_PUBLIC_RELEASE_SECURITY_STRATEGY.md) | repository public release, production access control, step-up private access, zero-day/file-access risk 완화 전략 |
 | [reference/LWS_GLOSSARY.md](./reference/LWS_GLOSSARY.md) | source of truth, projection, read model, fail-closed, effective permission 같은 핵심 용어 기준 정의 |
 | [implementation/](./implementation/README.md) | 실제 구현 진행 보고서, milestone 상태, API route inventory, 검증 명령 |
+| [plans/LWS_ONTOLOGY_SYSTEM_DISCUSSION_AND_PLAN.md](./plans/LWS_ONTOLOGY_SYSTEM_DISCUSSION_AND_PLAN.md) | Node-first Ontology의 design history와 phased implementation plan |
+| [plans/LWS_GROUP_ONTOLOGY_MIGRATION_PLAN.md](./plans/LWS_GROUP_ONTOLOGY_MIGRATION_PLAN.md) | Scope/Collection compatibility를 보존하는 Group projection/API/permission migration과 test gate |
 
 ## Fixed Design Principles
 
@@ -51,7 +54,7 @@ L.W.S.는 단순한 wiki page editor가 아니라, configured storage root 아�
 3. Source of truth는 node/edge JSON object와 event/patch/history record다.
 4. SQLite는 삭제 후 재생성 가능한 generated read model이다.
 5. 기본 object kind는 `node`와 `edge`다.
-6. tag, type, relation type, graph view, timeline view, setting, account, permission scope는 node로 표현할 수 있어야 한다.
+6. Tag, Type, Relation, Definition, Axiom, Group, graph/timeline view, setting, account는 필요한 경우 first-class Node로 표현할 수 있어야 한다. Legacy permission Scope/Collection은 Group migration의 Compatibility surface다.
 7. Edge는 node 사이의 first-class relationship object이며 자체 metadata, validation, history를 가진다.
 8. 모든 write는 `rev` 기반 optimistic concurrency를 사용한다.
 9. 모든 변경은 event log와 per-object history로 추적한다.

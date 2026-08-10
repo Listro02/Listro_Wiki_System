@@ -1,5 +1,10 @@
 # L.W.S. Backend Design
 
+> Ontology status (2026-08-06): 이 문서의 Scope/Collection permission과
+> `object_scope_memberships`는 current backend baseline이다. Target Group contract와 단계별
+> migration은 [LWS_ONTOLOGY_MODEL.md](./LWS_ONTOLOGY_MODEL.md) 및
+> [LWS_GROUP_ONTOLOGY_MIGRATION_PLAN.md](./plans/LWS_GROUP_ONTOLOGY_MIGRATION_PLAN.md)를 따른다.
+
 ## Temporal coverage read API (2026-08-05)
 
 `GET /api/lws/temporal-coverage` is a read-model API for `undated`, `missing`, and `invalid` temporal values. It shares Timeline's permission-aware base filter builder and temporal classifier; a coverage count and its listed objects therefore have one classification rule. Coverage deliberately has no `from`, `to`, or `group_by`: it is a data-quality view of the selected basis, not another time-axis query. Its opaque keyset cursor binds normalized filters, requested state, index revision, title, and object ID. The API returns only permission-safe object summaries.
