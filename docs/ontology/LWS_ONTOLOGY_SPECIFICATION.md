@@ -125,7 +125,7 @@ compatibility/migration 기록으로 정리한다.
 10. JSON Schema와 ontology property rule의 우선순위
 11. Property 변경과 instance compatibility
 
-### [단계 8 — Definition과 Axiom model](#stage-8)
+### [단계 8 — Definition, Axiom과 Constraint model](#stage-8)
 
 1. Definition의 목적과 소유 대상
 2. Definition의 revision, version, citation
@@ -135,15 +135,15 @@ compatibility/migration 기록으로 정리한다.
 6. Domain/range, property, cardinality, lifecycle Axiom
 7. Severity, rationale, evidence, exception
 8. Validity period와 effective version
-9. Axiom dependency와 conflict
-10. Axiom evaluation과 explainability
+9. Axiom 사이의 의미 관계와 conflict
+10. Constraint evaluation과 explainability
 11. Enforcement policy와 Axiom 자체 의미의 분리
 
 ### [단계 9 — Validation과 semantic issue](#stage-9)
 
 1. Shape, reference, role, semantic validation의 단계
 2. Advisory, warning, blocking validation
-3. Validation code와 governing Term/Axiom
+3. Validation code와 governing Term/Axiom/Constraint
 4. Deterministic evaluation과 validation ordering
 5. Legacy-invalid source 처리
 6. False positive, exception, waiver
@@ -230,7 +230,7 @@ compatibility/migration 기록으로 정리한다.
 2. Core Relation 목록과 Definition
 3. Core Property 목록과 Definition
 4. Core Tag와 classification policy
-5. Core Axiom과 validation code
+5. Core Axiom, 이를 operationalize하는 Constraint와 validation code
 6. Group/permission vocabulary
 7. Definition/replacement vocabulary
 8. Materialization manifest와 ontology version
@@ -254,7 +254,7 @@ compatibility/migration 기록으로 정리한다.
 1. Conformance level과 지원 범위
 2. 최소 reference domain ontology
 3. Valid/invalid instance fixture
-4. Type, Relation, Property, Axiom validation test
+4. Type, Relation, Property, Axiom–Constraint 추적과 Constraint validation test
 5. Group hierarchy와 permission fixture
 6. Materialization idempotency test
 7. Full reindex/incremental parity
@@ -929,8 +929,8 @@ Core Ontology vocabulary
 Semantic Statement
 ├─ Assertion
 ├─ Definition
-└─ Semantic Rule
-   ├─ Axiom
+├─ Axiom
+└─ Executable Semantic Rule
    └─ Constraint
       ├─ Object-scoped Constraint
       └─ Global Constraint
@@ -940,17 +940,56 @@ Semantic Statement
 `Value/Literal`은 Knowledge Object 안에서 독립적인 canonical identity 없이 기록하는 값의 개념
 후보다. 어떤 값에 독립 identity가 필요하여 Knowledge Object가 되는지는 단계 2에서 정한다.
 
-`Ontology Term`은 L.W.S. Ontology의 vocabulary 자체를 구성하기 위해 만든 Knowledge Object다.
-모든 Knowledge Object가 Term인 것은 아니며, Knowledge Object가 domain의 Type, Tag, Relation
-Type 또는 Property 역할을 적용받았다는 사실만으로 자동으로 Ontology Term이 되지 않는다.
-현재 단계에서 확인한 Ontology Term의 최소 하위 범위는 `Type`, `Tag`, `Relation Type`과
-`Property` 같은 역할 자체를 확립하는 Core `Semantic Role Term`이다. Term의 lifecycle, version,
-provenance, governance와 그 밖의 공통 contract는 아직 확정하지 않고 단계 3·4·11에서 논의한다.
+`Ontology Term`은 L.W.S. Ontology의 vocabulary 자체를 구성하기 위해 만든 Node Knowledge
+Object다. 기본적인 machine-readable Term 판정은 `Node.type == type.term`으로 수행한다. 모든
+Knowledge Object가 Term인 것은 아니며, ID prefix, 자연어 Definition 또는 Vocabulary Group
+소속만으로 Ontology Term이라고 판정하지 않는다.
 
-Semantic Role Term이 실제 Knowledge Object에 어떻게 적용되는지와 Type 역할이 적용된
-Knowledge Object를 instance가 어떻게 참조하는지는 단계 3과 단계 5에서 정한다. 역할을 적용받은
-Knowledge Object는 ontology-aware domain model에 참여할 수 있지만 그 사실만으로 Core Ontology
-Term이 되지는 않는다.
+Term도 하나의 지식을 다루는 Knowledge Object이므로 하나의 Term에는 정확히 하나의 semantic
+role만 부여한다. `type.term` profile은 `props` 아래의 ontology 전용 영역에 canonical
+`semantic_role` reference를 요구하는 방향으로 둔다. 해당 reference는 승인된 Semantic Role
+Term 하나를 가리켜야 하며, Type, Tag, Relation Type 또는 Property 역할을 동시에 둘 이상
+가질 수 없다. 같은 개념을 서로 다른 role로 사용할 필요가 있으면 role마다 독립 identity를
+가진 별도의 Term을 만들고 필요한 개념 관계로 연결한다. `props`의 정확한 path, role ID와
+role별 canonical contract는 단계 3에서 확정한다.
+
+```text
+Ontology Term Node
+├─ Node.type: type.term
+└─ props의 ontology 전용 영역
+   └─ semantic_role: 정확히 하나의 Semantic Role Term reference
+      ├─ Type
+      ├─ Tag
+      ├─ Relation Type
+      └─ Property
+```
+
+`type.term`은 Term 여부를 빠르게 식별하고 `semantic_role`은 그 Term이 맡는 구체 role을
+판정한다. Vocabulary Group membership은 Term의 성립 조건이 아니라 특정 Core, Domain 또는
+profile vocabulary에서 승인하여 사용할 수 있는지를 판정하는 별도 governance 정보다.
+따라서 `type.term`이지만 대상 Vocabulary Group에 속하지 않은 Node도 Ontology Term이기는 하나,
+그 vocabulary가 요구되는 context에서 승인된 Term으로 사용할 수는 없다.
+
+Vocabulary Group membership와 전체 role contract는 일반 object 조회마다 반복 검사하지 않는다.
+Term 생성·수정, Vocabulary membership 변경, ontology/profile 활성화, cache miss와 전체
+conformance validation에서 검사하고, 성공한 해석을 Resolved Term Registry 또는 동등한 cache에
+보관하여 Runtime consumer가 재사용하는 방향으로 둔다.
+
+```mermaid
+flowchart LR
+    O["Object Reader"] --> T{"Node.type == type.term?"}
+    T -->|"아니요"| N["일반 Knowledge Object"]
+    T -->|"예"| R["semantic_role 1개 확인"]
+    R --> V{"해당 context에서<br/>Vocabulary 검증 필요?"}
+    V -->|"아니요"| C["Resolved Term Registry/cache"]
+    V -->|"예"| G["Vocabulary Group membership 확인"]
+    G --> C
+```
+
+Term role 변경은 기존 instance와 reference의 의미를 바꿀 수 있으므로 일반 metadata 수정으로
+취급하지 않는다. in-place 변경 허용 여부, 새 Term 또는 version 생성, 기존 사용처 migration과
+Registry invalidation을 일으키는 semantic change의 기준은 단계 4에서 결정한다. Term의
+provenance와 더 상세한 공통 meta-model contract는 단계 3에서 논의한다.
 
 `Assertion`은 Knowledge Object 또는 Value 사이에 어떤 사실이나 관계가 성립한다고 표현한
 semantic statement다. Assertion은 Ontology Term의 사용을 성립 조건으로 요구하지 않는다.
@@ -958,16 +997,40 @@ Relation Type 역할이 적용된 정식 관계 vocabulary로 확립되지 않�
 Assertion일 수 있으며, 그 관계에 어떤 공유 의미와 validation을 적용할 수 있는지는 별도로
 판정한다.
 
-`Definition`은 Knowledge Object, Term 또는 Semantic Rule의 의미를 설명하는 statement다.
-`Axiom`은 ontology가 의미 체계의 기본 관계, proposition 또는 추론 기반으로 채택한 Semantic
-Rule이고, `Constraint`는 Knowledge Object나 grammar에 적용되는 허용·필수·금지 조건을 다루는
-Semantic Rule이다. Constraint는 특정 Knowledge Object에 연결되는 `Object-scoped Constraint`와
-전체 grammar 또는 대상 집합에 적용되는 `Global Constraint`로 구분한다.
+`Definition`은 Knowledge Object, Term, Axiom 또는 Constraint의 의미를 사람이 이해할 수
+있도록 설명하는 statement다. 실행 가능한 Constraint의 자연어 설명은 operator와 operand가
+나타내는 의미를 풀어 쓰는 보조 표현이며, 자연어만으로 실행 의미를 추가하거나 변경하지
+않는다. operator·operand와 설명이 충돌하면 실행 판정은 machine-readable 표현을 따르고,
+해당 충돌은 Definition 또는 문서의 drift로 검토한다.
 
-Axiom과 Constraint는 공통 rule shape나 evaluator를 사용할 수 있지만 의미상 같은 종류로
-간주하지 않는다. 개별 Axiom은 승인된 Specification Decision을 바탕으로 이후 단계에서
-작성하며, materialized Axiom이 Specification Decision을 대신하는 상위 권위가 되지 않는다.
-Axiom, Constraint와 공통 rule 표현의 구체 구조는 단계 8에서 결정한다.
+`Axiom`은 ontology가 의미 체계의 기본 관계, proposition 또는 추론 기반으로 채택한
+개념적 의미 명제이다. Axiom 자체는 Runtime Rule Set에서 실행하지 않는다. 개별
+Axiom은 승인된 Specification Decision을 바탕으로 이후 단계에서 작성하며,
+materialized Axiom이 Specification Decision을 대신하는 상위 권위가 되지 않는다.
+
+`Constraint`는 Knowledge Object나 grammar에 적용되는 허용·필수·금지 조건을 기계가 검사할
+수 있게 구현한 executable Semantic Rule이다. 실행 가능한 Constraint Node의 canonical
+`Node.type`은 `type.rule`로 둔다. Constraint는 특정 Knowledge Object에 연결되는
+`Object-scoped Constraint`와 전체 grammar 또는 대상 집합에 적용되는 `Global
+Constraint`로 구분한다. `type.rule`의 전체 contract와 Rule의 canonical shape는
+단계 8에서 구체화한다.
+
+Axiom의 검사 가능한 부분은 하나 이상의 Constraint로 operationalize할 수 있다. Axiom과
+Constraint 사이의 의미 추적 관계는 Edge로 표현하는 방향으로 둔다. 해당 Edge는
+Constraint가 어떤 Axiom을 구현하는지 설명하는 관계이며, Compiler가 Axiom을 실행하거나
+Axiom에서 Constraint를 자동 생성하게 하는 Rule dependency가 아니다. 구체 Relation Type,
+방향과 cardinality는 단계 8에서 결정한다.
+
+```mermaid
+flowchart LR
+    D["Specification Decision"] -->|"개념적 의미를 문서화"| A["Axiom<br/>비실행 의미 명제"]
+    A ---|"추적 Edge<br/>방향·cardinality는 단계 8"| C["Constraint Node<br/>type.rule"]
+    C -->|"operator + operand"| RC["Rule Compiler"]
+    RC -->|"compile"| R["Runtime Rule"]
+```
+
+이 도식에서 Axiom과 Constraint 사이의 선은 의미 추적 관계만 나타낸다. Axiom에서 Constraint로
+실행 제어가 흐르거나 Compiler가 Axiom을 실행 입력으로 읽는다는 뜻이 아니다.
 
 별도의 `Semantic Context`를 최소 grammar 구성 요소나 Knowledge Object로 두지 않는다. 의미
 판정에 필요한 적용 조건은 Axiom 또는 Constraint를 비롯한 적용 규칙 안에 명시할 수 있다.
@@ -981,34 +1044,238 @@ Semantic grammar는 무엇을 의미하는지, canonical object grammar는 그 �
 검사할 수 있는 규칙과 여러 object의 의미를 함께 해석해야 하는 규칙을 집행한다. 이 관계의
 그래프는 1.11에 기록한다.
 
-Ontology 규칙은 기계가 결정적으로 식별하고 적용할 수 있어야 한다. 그러나 이 원칙만으로 모든
-규칙을 처음부터 Knowledge Object로 self-description하거나 materialize해야 한다고 선결하지
-않는다. bootstrap code/schema와 materialized ontology의 구체적인 authority 및 전환 관계는
-단계 2와 단계 12에서 결정한다.
+Ontology 규칙은 기계가 결정적으로 식별하고 적용할 수 있어야 한다. 다만 모든 규칙을
+처음부터 Knowledge Object로 self-description하거나 materialize하지 않고, 최소 Bootstrap
+Kernel과 declarative Core Package를 두는 구조를 기준안으로 둔다.
 
-canonical JSON field가 의미 규범에 속하는지는 그 선택이 같은 canonical source의 의미,
-reference, validity 또는 consumer 사이의 상호 운용 결과를 바꾸는지로 판정한다. 구체 field,
-datatype, required 여부와 role별 profile은 관련 개념을 다루는 단계 3부터 단계 7에서 확정한다.
+#### Bootstrap Kernel과 declarative Core Package의 경계
+
+Bootstrap Kernel은 Core Package를 읽고 컴파일하기 전에 이미 동작할 수 있어야 하는 최소
+실행 기반이다. 따라서 Package 자체의 Constraint로 표현하면 순환 dependency가 생기는 문법,
+식별, 해석과 활성화 기능만 Kernel에 둔다. 이 기준으로 지금까지 논의한 전체 구조는 다음과
+같다.
+
+```text
+Bootstrap Kernel
+├─ Object Reader
+│  ├─ ID로 object 정보 읽기
+│  ├─ membership 조회에 필요한 Edge 정보 읽기
+│  └─ 읽은 canonical field를 의미 판정 없이 반환
+├─ Bootstrap Vocabulary Provider
+│  ├─ type.term의 canonical identity
+│  ├─ type.group과 type.package의 canonical identity
+│  ├─ type.rule의 canonical identity
+│  ├─ 지원 operator의 identity
+│  └─ 표준 Group membership relation의 canonical identity
+├─ Bootstrap Type Resolver
+│  ├─ object_kind 정보에 따른 Node/Edge 판정
+│  ├─ Node.type의 exact canonical identity 판정
+│  └─ type.package가 type.group을 확장한다는 최소 bootstrap 관계
+├─ Direct Group Membership Resolver
+│  ├─ Type Resolver로 group-capable Node 확인
+│  ├─ Object Reader로 표준 membership Edge 읽기
+│  └─ 중첩 전개 없이 직접 구성원 반환
+├─ Package Resolver
+│  ├─ 관리자가 지정한 Node ID 읽기
+│  ├─ type.package 판정
+│  ├─ Direct Group Membership Resolver로 Rule 후보 수집
+│  └─ 하나의 활성 Core Package 선택
+├─ Rule Compiler
+│  ├─ Common Compiler
+│  │  ├─ Package 구성 무결성 검사
+│  │  ├─ type.rule 판정
+│  │  └─ operator 식별과 dispatch
+│  └─ Operator-specific Compiler
+│     ├─ operand 구조 검사
+│     ├─ reference와 semantic condition 검사
+│     └─ Runtime Rule 생성
+├─ Operator Runtime
+│  ├─ 대상·분류 검사
+│  ├─ 값 검사
+│  ├─ 참조·관계 검사
+│  └─ 논리 결합
+├─ Activation Controller
+│  ├─ 관리자 활성화 명령
+│  ├─ Package 전체 성공 판정
+│  ├─ Runtime Rule Set 원자적 교체
+│  └─ 실패 시 기존 Rule Set 유지
+└─ Runtime Rule Set
+   ├─ 컴파일된 Rule cache
+   ├─ mutation·validation에서 재사용
+   └─ 실행 중 원본 Rule Node 반복 조회 금지
+
+Declarative Core Package
+└─ Package Node: type.package (type.group을 확장한 group-capable Node)
+   └─ 직접 membership Edge
+      └─ Constraint Rule Node: type.rule
+         ├─ operator
+         └─ operator-specific operand
+```
+
+Object Reader는 object 정보를 가져오는 retrieval component이며, 읽은 object가 Node, Edge,
+Group, Package 또는 Rule인지 의미상 판정하지 않는다. 저장 형식을 decode할 수 없거나 판정에
+필요한 field 자체를 읽을 수 없는 상태만 read/decode 실패로 반환한다. Bootstrap Type Resolver,
+Direct Group Membership Resolver, Package Resolver와 Rule Compiler는 Object Reader를 호출하여
+가져온 동일한 정보를 각자의 책임에 따라 판정한다.
+
+`type.package`는 `type.group`을 확장한 built-in Type으로 둔다. 따라서 모든 `type.package` Node는
+Group membership의 group 위치에 사용할 수 있지만, 모든 `type.group` Node가 Package인 것은
+아니다. 일반 Type 계층을 아직 컴파일하지 않은 bootstrap 시점에는 Type Resolver가 이 최소
+관계를 내재적으로 알고 있어야 한다. 향후 일반 Type 계층과 다른 group-capable Type의 확장
+방식은 단계 10에서 구체화한다.
+
+Direct Group Membership Resolver는 Core Package의 Rule을 읽기 위해 반드시 선행되어야 하므로
+Bootstrap Kernel에 포함한다. 다만 직접 구성원 조회만 제공하며, 중첩 Group 전개, transitive
+membership, permission effect와 일반 Group별 동작은 수행하지 않는다. 이러한 일반 Group
+기능은 bootstrap 이후의 Core 규칙과 단계 10에서 다룬다.
+
+Bootstrap Kernel은 ontology의 모든 Core 규칙을 code로 내재화하는 계층이 아니다. Core Package를
+읽고 검증하고 컴파일하고 활성화하는 데 선행되어야 하는 invariant와 operator 구현만 code에
+둔다. 그 기반 위에서 표현할 수 있는 L.W.S. Core 의미 규칙은 `type.rule` Constraint로 Core
+Package에 선언하고, 활성화할 때 한 번 컴파일하여 Runtime Rule Set으로 cache한다.
+
+Kernel이 제공하는 `type.term`, `type.group`, `type.package`, `type.rule`, operator와 그 밖의 bootstrap
+identity는 향후 사람이 조회할 수 있는 read-only Knowledge Object로 materialize하거나 동일한
+read-only ontology view로 노출할 수 있다. 최초 구조에서 이 표현은 주로 자연어 설명과 탐색을
+위한 비실행 view이며 Kernel code가 실행 권위를 가진다. 둘의 설명이 충돌해도 Runtime은 현재
+Kernel code를 계속 사용하고 관리자가 documentation/materialization drift를 확인하여 개선한다.
+read-only object에 구조화된 실행 정의를 추가하거나 이를 실행 권위로 승격하는 문제는 단계
+2에서 authority 원칙을 정하고, 단계 12에서 materialization contract를 구체화한다.
+
+Bootstrap Type을 나타내는 Term object와 그 Type을 사용하는 instance는 구별한다. 예를 들어
+`id == type.rule`인 bootstrap Term Node 자체는 `Node.type == type.term`이고 Type semantic role을
+가진다. 실제 Constraint Rule Node는 `Node.type == type.rule`을 사용한다. `type.package`와 다른
+built-in Type도 같은 meta-circular 구조를 따르며, 최초 순환은 Bootstrap Vocabulary Provider가
+끊는다. self-description의 bootstrap 원칙은 단계 2에서 확정하고 materialized object shape는
+단계 12에서 구체화한다.
+
+#### Ontology 작성과 활성화의 권한 경계
+
+Ontology Term, executable Constraint와 Core Package는 일반 Knowledge Object 편집과 분리된
+ontology governance 권한을 요구한다. 최소한 다음 행위는 서로 구별하여 권한을 부여할 수
+있어야 한다.
+
+1. `type.term` Node의 생성과 수정
+2. `type.rule` Constraint Node의 생성과 수정
+3. `type.package` Node와 그 직접 membership의 구성
+4. Package의 컴파일 및 Runtime Rule Set 활성화
+5. bootstrap Term의 materialization과 복구
+
+Rule을 작성할 수 있다는 사실만으로 Package를 활성화할 수 있는 것은 아니다. Package 활성화는
+Runtime 의미를 실제로 변경하므로 관리자 또는 동등한 별도 권한을 요구한다. `type.term`,
+`type.group`, `type.package`, `type.rule`과 operator identity 같은 built-in bootstrap Term은 일반
+사용자가 생성·수정·삭제할 수 없는 read-only 대상으로 두고, 승인된 system materializer 또는
+bootstrap 복구 절차만 materialize하거나 복구할 수 있게 한다.
+
+권한 판정과 semantic validity는 분리한다. 권한 있는 사용자가 작성했다는 사실만으로 Term이나
+Rule이 valid해지지 않으며, valid한 source라도 권한 없는 mutation은 거부한다. 정확한 capability,
+Group 기반 권한 부여, 승인 workflow와 lifecycle별 수정·폐기 권한은 단계 11에서 결정한다.
+
+#### Machine-readable Rule의 작성과 실행
+
+Core Package는 `type.group`을 확장한 `type.package` Node와, L.W.S. 기존 Group 시스템의 표준
+membership Edge로 연결된 `type.rule` Constraint Node로 구성한다.
+최초 Canonical에서는 하나의 활성 Core Package와 그 Package의 직접 구성원만 허용한다.
+중첩 Package(group이 group을 member로 가지는 것), 부분 활성화, Package import와 Rule 간 호출·의존성은 후속 범위로 이관한다.
+서로 의존하는 조건은 하나의 Rule 안에서 표현해야 하며, Rule 순서, dependency graph,
+고정점 계산과 cycle 처리를 요구하는 구조는 최초 범위에 포함하지 않는다.
+
+Rule Compiler는 공통 Compiler와 operator별 Compiler를 하나의 체계로 둔다. Package Resolver는
+활성화 대상으로 지정된 `type.package` Node의 직접 구성원을 수집한다. 공통 Compiler는 전달된
+모든 직접 구성원을 `type.rule`이라는 정확한 canonical Type ID로 판정하고 operator별 Compiler로
+dispatch한다. operator별 Compiler는 해당 operator가 요구하는
+operand 구조, reference와 semantic condition을 검사하고 Runtime Rule로 컴파일한다.
+`type.rule`은 실행 후보를 고르는 명시적 discriminator이지 단독으로 실행 가능성을
+보증하지 않는다. 활성 Core Package에 `type.rule`이 아닌 직접 구성원이 있으면 이를 무시하지
+않고 Package compile error로 처리한다.
+
+활성 Core Package의 모든 Rule이 컴파일에 성공해야 새 Runtime Rule Set을 활성화할 수
+있다. 하나라도 실패하면 Package 전체 활성화를 취소하고 기존 Runtime Rule Set을
+유지한다. 새 Rule Set의 컴파일과 원자적 교체는 관리자의 명시적 활성화 명령에서
+수행한다. Runtime은 컴파일된 규칙을 평가하며 매번 원본 Rule Node를 다시
+읽지 않는다.
+
+```mermaid
+flowchart TD
+    A["관리자가 Package Node ID 지정"]
+    OR["Object Reader<br/>object 정보 반환"]
+    TR["Bootstrap Type Resolver<br/>type.package 판정"]
+    P["Package Node<br/>type.package extends type.group"]
+    GR["Direct Group Membership Resolver"]
+    R1["Constraint Rule Node<br/>type.rule"]
+    RN["Constraint Rule Node<br/>type.rule"]
+    CC["Common Compiler<br/>구성원·type.rule·operator 판정"]
+    OC["Operator-specific Compiler<br/>operand·reference·semantic condition 검사"]
+    G{"모든 Rule compile 성공?"}
+    NEW["새 Runtime Rule Set<br/>원자적 활성화"]
+    OLD["기존 Runtime Rule Set 유지"]
+
+    A --> OR
+    OR --> TR
+    TR --> P
+    P --> GR
+    GR -->|"직접 membership"| R1
+    GR -->|"직접 membership"| RN
+    R1 --> CC
+    RN --> CC
+    CC --> OC
+    OC --> G
+    G -->|"예"| NEW
+    G -->|"아니요"| OLD
+```
+
+Package의 직접 구성원 중 `type.rule`이 아닌 Node가 있거나 operator별 검사에 실패한 Rule이
+있으면 위 도식의 실패 경로를 따른다. 부분적으로 컴파일된 Rule은 활성화하지 않는다.
+
+최초 Bootstrap Kernel은 다음 네 operator 계열을 모두 제공한다.
+
+1. **대상·분류 검사**: object kind, Type, Tag과 semantic role을 판정한다.
+2. **값 검사**: 값의 존재, 동일성, datatype, shape와 허용 집합을 검사한다.
+3. **참조·관계 검사**: reference 해석, endpoint 존재, endpoint kind·role과 관계 방향을
+   검사한다.
+4. **논리 결합**: 하나의 Rule 안에서 여러 검사를 all, any, not 또는 조건부 적용으로
+   결합한다.
+
+네 계열은 최초 범위에 모두 필요하지만, 각 계열에서 제공할 개별 operator 전체를 이
+단계에서 확정하지 않는다. 개별 operator ID, operand grammar, compile 실패 조건과
+기본 설명 contract는 단계 8에서 구체화한다. 최초 범위에서는 임의 code 실행, Rule 호출,
+재귀 graph 탐색, 일반 query language, 외부 I/O와 mutation을 operator로 허용하지 않는다.
 
 #### 후속 단계로 이관한 세부사항
 
-| 세부사항 | 주된 후속 단계 | 이관 이유 |
-| --- | --- | --- |
-| Value/Literal과 first-class Knowledge Object의 정확한 경계 | 단계 2 | source 지위와 독립 identity의 기준이 필요하다. |
-| Semantic Role Term의 표현과 실제 Knowledge Object에 대한 role 적용 방식 | 단계 3·5 | core meta-model과 classification 규칙이 필요하다. |
-| bootstrap code/schema와 materialized ontology의 authority | 단계 2·12 | bootstrap 및 materialization contract를 함께 정해야 한다. |
-| canonical field, datatype, required 여부와 role별 profile | 단계 3~7 | 각 semantic role, identity와 value model의 결정이 선행되어야 한다. |
-| 승인 규칙 집합의 revision, ontology version 또는 다른 식별 방식 | 단계 4·15 | stable identity, version과 canonical vocabulary 규칙이 필요하다. |
-| validation 상태와 동일성, inference 및 query/projection 결과 | 1.7·1.12·1.13, 단계 9·13·17 | 각 결과의 의미와 conformance 기준이 아직 확정되지 않았다. |
-| invalid source의 Knowledge Graph 참여 지위 | 1.6, 단계 9·14 | Knowledge Graph와 validation/source 보존의 관계를 먼저 정해야 한다. |
+다음 표는 하나의 주 책임 단계만 지정한다. schema, validation, materialization, API와 conformance는
+주 책임 단계에서 승인된 의미 contract를 각자의 단계에서 집행하거나 검증하며, 같은 질문의
+공동 소유자로 중복 표기하지 않는다.
 
-#### 남은 상세 논의 질문
+| 주 책임 단계 | 이관된 논의사항 |
+| --- | --- |
+| 단계 2 | Value/Literal과 Knowledge Object의 경계, bootstrap authority와 meta-circular self-description |
+| 단계 3 | `type.term` profile, 단일 semantic role과 Core meta-model |
+| 단계 4 | Term·Package·Rule의 identity, version, lifecycle과 semantic change 기준 |
+| 단계 5 | Type·Tag Term의 instance classification과 reference 규칙 |
+| 단계 6 | field-encoded relation과 explicit Edge의 경계, Axiom–Constraint 추적 Relation |
+| 단계 7 | ontology `props`, Property/value shape와 JSON Schema 표현 |
+| 단계 8 | Axiom·Constraint, `type.rule`, operator와 operand grammar |
+| 단계 9 | compile·semantic validation issue, Registry freshness와 invalid 참여 제한 |
+| 단계 10 | `type.package`의 Group semantics와 Vocabulary Group contract |
+| 단계 11 | Term·Rule·Package 작성, membership, 활성화와 bootstrap 복구 권한 |
+| 단계 12 | bootstrap materialization, Resolved Term Registry와 Runtime Rule Set cache contract |
+| 단계 13 | relation projection·query 통합과 explanation |
+| 단계 14 | Term role·membership 변경과 기존 source migration |
+| 단계 15 | Canonical bootstrap·operator vocabulary와 활성 규칙 집합의 식별 |
+| 단계 17 | Term, Package, Compiler와 Runtime 결과의 conformance fixture |
+| 단계 19 | 중첩 Package, 부분 활성화, Rule dependency와 확장 operator |
 
-1. machine-readable 원칙을 만족하기 위해 최초 Canonical에서 모든 규칙을 Knowledge Object로
-   self-description해야 하는가, 아니면 명시적인 bootstrap kernel의 code/schema 표현을
-   허용할 수 있는가?
-2. Core Ontology Term과 일반 Knowledge Object의 경계를 어떤 선언 또는 관계로 판정할 것인가?
-   이 판정 원칙을 단계 1에서 어디까지 정하고 구체 표현을 단계 3으로 넘길 것인가?
+위 이관 사항과 1.4 논의에서 파생된 구체 질문은 해당 주 책임 단계의 본문 시작 부분에
+`1.4에서 이관된 논의사항`으로 다시 기록한다. 각 단계는 이 절을 다시 읽지 않아도 해당 로컬
+목록을 논의 agenda와 추적 기준으로 사용할 수 있어야 한다.
+
+#### 1.4 논의 완료
+
+Bootstrap Kernel과 declarative Core Package의 최소 경계는 앞선 트리와 “Package보다 먼저
+필요하거나 Package로 옮기면 순환 dependency가 생기는 기능만 Kernel에 둔다”는 기준으로
+정리되었다. 1.4 자체에 남은 상세 논의 질문은 없으며, 위 표의 항목은 각 주 책임 단계에서
+구체화한다.
 
 <a id="stage-1-knowledge-object"></a>
 ### 1.5 Knowledge Object와 Node/Edge
@@ -1174,7 +1441,7 @@ Specification 확립 후 실행안과 실행 승인을 거쳐 수행한다.
    version 증가를 요구하는가?
 5. structural validation을 통과했지만 semantic validation에 실패한 source의 저장·조회·수정
    가능 범위는 어떻게 정할 것인가?
-6. Schema와 Validator가 같은 rule code, governing Term/Axiom과 conformance fixture를 공유해야
+6. Schema와 Validator가 같은 rule code, governing Term/Axiom/Constraint와 conformance fixture를 공유해야
    하는가?
 
 <a id="stage-1-layers"></a>
@@ -1384,7 +1651,7 @@ shape와 규칙을 어떤 코드 구조로 구현할지는 구현의 책임이�
 위한 **Canonical 보증 요건**이며, 선택적으로 생략할 수 있는 secondary goal이 아니다.
 
 1. **추적 가능한 규칙 집행**: validation, materialization, projection과 query 결과를 governing
-   Decision·Term·Axiom 및 source provenance에 연결할 수 있어야 한다.
+   Decision·Term·Axiom·Constraint 및 source provenance에 연결할 수 있어야 한다.
 2. **설명 가능한 conformance**: 기계와 사람이 적용 규칙과 판정 근거를 확인할 수 있어야 한다.
 3. **필요한 derived state의 재구성 가능성**: Canonical 범위에 포함되는 index, projection과
    closure는 canonical source와 적용 규칙에서 다시 만들 수 있어야 한다.
@@ -1490,8 +1757,8 @@ Reference domain의 구체 사례를 실행 가능한 입력과 기대 해석으
 
 1. 최초 Canonical에서 허용할 추론은 subclass, inverse relation, transitive closure와 default
    value 중 어디까지인가? 단계 19로 미룰 추론은 무엇인가?
-2. inference rule 자체는 Axiom/Constraint인가, 별도 Rule term인가, code에 연결된 Core
-   declaration인가?
+2. inference rule은 비실행 Axiom이나 validation Constraint와 구별되는 별도 executable Rule
+   Type인가, 아니면 code에 연결된 Core declaration인가?
 3. derived assertion에 source assertion 집합, rule ID/version, evaluation time과 context를 어느
    수준까지 provenance로 보존해야 하는가?
 4. explicit assertion과 derived assertion이 충돌하면 explicit가 우선하는가, validation issue를
@@ -1575,7 +1842,7 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 | `Blocking` | permission-filtered consumer도 conformance를 판정할 수 있는가, privileged validator만 가능한가? | 숨겨진 metadata 유출 없이 validation 일관성을 유지해야 한다. | 단계 9·11·17 |
 | `Blocking` | 하나의 object에 여러 ontology/profile이 적용될 때 충돌 우선순위는 무엇인가? | Domain 결합과 query context의 결정성을 보장한다. | 단계 3·9·13 |
 | `Blocking` | conformance의 단위가 object, graph, workspace, implementation 또는 consumer 중 무엇인가? | 테스트 및 Canonical 완료 기준을 구체화한다. | 단계 9·17 |
-| `Blocking` | human-readable Definition과 machine-enforceable Axiom이 충돌하면 무엇이 의미 권위인가? | 설명 문구와 실행 규칙의 drift를 방지한다. | 단계 8·9 |
+| `Blocking` | human-readable Definition과 machine-executable Constraint의 operator·operand가 충돌하면 무엇이 실행 권위인가? | 설명 문구와 실행 규칙의 drift를 방지한다. | 단계 8·9 |
 | `Blocking` | ontology가 허용하는 extension이 보안 경계나 permission 의미를 약화시킬 수 있는가? | Domain 확장이 Core safety를 우회하지 못하게 한다. | 단계 6·7·11 |
 
 <a id="stage-1-unresolved"></a>
@@ -1639,70 +1906,253 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 <a id="stage-2"></a>
 ## 단계 2 — 저장 철학과 Ontology bootstrap
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Value/Literal과 first-class Knowledge Object의 경계를 독립 identity, source,
+   revision과 addressability 중 어떤 기준으로 판정할지 정한다.
+2. `[Blocking]` `type.term`, `type.group`, `type.package`, `type.rule`과 operator identity를 제공하는
+   Bootstrap Vocabulary Provider와 materialized read-only Term의 authority 관계를 정한다.
+3. `[Blocking]` bootstrap Term의 meta-circular self-description을 어떤 최소 code/schema로 끊고,
+   virtual identity와 materialized Knowledge Object 사이에서 같은 identity를 유지할지 정한다.
+4. `[Blocking]` Object Reader가 semantic 판단 없이 반환하기 위해 요구할 최소 decode contract와,
+   read/decode 실패와 semantic invalid를 구분하는 기준을 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-3"></a>
 ## 단계 3 — Core meta-model과 semantic role
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.term` profile의 ontology 전용 `props` 영역과 `semantic_role`의 정확한
+   canonical path를 정한다.
+2. `[Blocking]` 하나의 Term에 정확히 하나의 role만 허용한다는 규칙과 Type, Tag, Relation Type,
+   Property Semantic Role Term의 canonical identity 및 공통 contract를 정한다.
+3. `[Blocking]` 같은 개념을 여러 role로 사용할 때 role별 독립 Term을 만들고 이들을 어떤
+   개념 관계로 연결할지 정한다.
+4. `[Blocking]` `type.package`가 `type.group`을 확장하고 `type.rule`이 executable Constraint의
+   Type이라는 bootstrap 관계를 일반 Core meta-model에 어떻게 표현할지 정한다.
+5. `[Blocking]` `type.term`에 의한 Term 판정, 단일 semantic role과 Vocabulary Group 소속을
+   서로 독립된 meta-model 축으로 표현하는 contract를 정한다.
 
 <!-- 논의 후 작성 -->
 
 <a id="stage-4"></a>
 ## 단계 4 — 식별자, namespace, version, lifecycle
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Term의 semantic role 변경을 in-place mutation으로 허용할지, 새 Term 또는 새
+   semantic version과 replacement로 표현할지 정한다.
+2. `[Blocking]` role 변경이 기존 instance와 reference의 historical interpretation에 미치는
+   영향과 migration 기준을 정한다.
+3. `[Blocking]` Resolved Term Registry와 Runtime Rule Set이 참조할 Term, Package, Rule과
+   operator revision의 식별 방식을 정한다.
+4. `[Blocking]` Term·membership·Package revision 중 무엇이 semantic change이며 Registry와
+   Runtime Rule Set의 기존 revision을 무효화하는지 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-5"></a>
 ## 단계 5 — Type과 classification 규칙
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Type 및 Tag role을 가진 `type.term` Node를 instance의 `type`과 `tags`가 어떻게
+   canonical reference하는지 정한다.
+2. `[Blocking]` `Node.type == type.term`인 Term 자체의 role과 일반 instance에 적용된 Type·Tag
+   classification을 구분하는 판정 절차를 정한다.
+3. `[Blocking]` `type`, `tags` 같은 field-encoded classification과 explicit classification Edge의
+   canonical source 경계를 단계 6의 Relation 규칙과 함께 정한다.
 
 <!-- 논의 후 작성 -->
 
 <a id="stage-6"></a>
 ## 단계 6 — Relation과 statement 규칙
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` field-encoded relation과 독립 identity를 가진 explicit Edge Knowledge Object의
+   선택 기준을 정한다.
+2. `[Blocking]` 같은 assertion을 field와 Edge 양쪽에 canonical source로 중복 기록하지 않도록
+   source authority와 충돌 처리 규칙을 정한다.
+3. `[Blocking]` Axiom과 이를 operationalize하는 Constraint 사이의 추적 Edge에 사용할 Relation
+   Type, 방향과 cardinality를 정한다. 이 Edge는 실행 dependency가 아니어야 한다.
+4. `[Blocking]` semantic role, provenance, revision, lifecycle 또는 관계 자체에 대한 statement가
+   필요할 때 explicit Edge로 승격하는 기준을 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-7"></a>
 ## 단계 7 — Property와 value model
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.term` profile의 `props` ontology 영역, `semantic_role` reference의 datatype,
+   required 여부, cardinality 1과 JSON Schema 표현을 정한다.
+2. `[Blocking]` canonical key가 Property 또는 relation semantics를 가질 때 key의 의미를 어떤
+   Ontology Term에 연결할지 정한다.
+3. `[Blocking]` JSON Schema가 집행할 Term role의 structural shape와 Semantic Validator가
+   집행할 role reference를 구분하고 두 결과의 단일 conformance 판정을 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-8"></a>
-## 단계 8 — Definition과 Axiom model
+## 단계 8 — Definition, Axiom과 Constraint model
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.rule` Constraint Node의 canonical shape, operator ID와 operator별 operand
+   grammar를 정한다.
+2. `[Blocking]` 대상·분류, 값, 참조·관계, 논리 결합 네 operator 계열의 최초 개별 operator와
+   compile 성공·실패 조건을 정한다.
+3. `[Blocking]` 자연어 Definition은 operator·operand를 설명할 뿐 실행 의미를 추가하지 않는다는
+   원칙과 drift 판정·보고 방식을 정한다.
+4. `[Blocking]` Axiom은 비실행 의미 명제이고 Constraint가 검사 가능한 부분을 operationalize한다는
+   구분을 canonical object grammar로 표현한다.
+5. `[Blocking]` 하나의 Rule 안에서 복합 조건을 표현하는 방식과 Rule 간 호출·의존성을 최초
+   Canonical에서 금지하는 conformance 조건을 정한다.
+6. `[Blocking]` 임의 code, 외부 I/O, mutation, 재귀 graph 탐색과 일반 query language를 operator로
+   허용하지 않는 최초 안전 경계를 구체화한다.
 
 <!-- 논의 후 작성 -->
 
 <a id="stage-9"></a>
 ## 단계 9 — Validation과 semantic issue
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Common Compiler와 operator별 Compiler의 validation issue, error code, target,
+   explanation과 governing Constraint 형식을 정한다.
+2. `[Blocking]` Package의 Rule 하나라도 실패하면 전체 활성화를 거부하고 기존 Runtime Rule Set을
+   유지한다는 all-or-nothing 결과를 validation contract로 정의한다.
+3. `[Blocking]` Term 생성·수정, Vocabulary membership 변경, activation, cache miss와 전체
+   conformance validation 중 언제 role 및 Vocabulary 검증을 수행할지 정한다.
+4. `[Blocking]` Resolved Term Registry의 stale·invalid 상태와 Runtime consumer의 fail-open 또는
+   fail-closed 정책을 정한다.
+5. `[Blocking]` invalid Term 또는 Rule source를 보존하면서 Resolved Term Registry와 활성 Core
+   Package 참여를 제한하는 방식을 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-10"></a>
 ## 단계 10 — Group, containment, scope ontology
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.package`가 `type.group`을 확장한 group-capable Type이라는 관계와 일반 Group
+   Type 확장 방식을 정한다.
+2. `[Blocking]` Direct Group Membership Resolver가 사용할 표준 membership Relation과 방향,
+   직접 구성원 조회 contract를 정한다.
+3. `[Blocking]` Package Group과 Ontology Vocabulary Group의 목적, canonical shape와 동일 Group의
+   복수 역할 허용 여부를 정한다.
+4. `[Blocking]` Vocabulary Group이 Core, Domain 또는 profile 소속과 승인 범위를 어떻게 표현하며
+   하나의 Term이 여러 Vocabulary Group에 속할 수 있는지 정한다.
 <!-- 논의 후 작성 -->
 
 <a id="stage-11"></a>
 ## 단계 11 — Permission과 ontology governance
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.term` Node 작성·수정, `type.rule` Constraint 작성·수정, `type.package`와
+   membership 구성, Package 활성화 권한을 서로 분리한 capability model을 정한다.
+2. `[Blocking]` Rule 작성 권한이 Package 활성화 권한을 자동으로 부여하지 않도록 governance
+   boundary와 승인 workflow를 정한다.
+3. `[Blocking]` built-in bootstrap Term과 operator identity를 read-only로 보호하고 system
+   materializer 또는 복구 절차에만 변경 권한을 부여하는 방식을 정한다.
+4. `[Blocking]` semantic validity와 mutation authority를 분리하여, 권한 있는 작성도 validation을
+   면제하지 않고 valid source의 무권한 mutation도 거부하도록 한다.
+5. `[Blocking]` Term lifecycle 변경, replacement, deprecation과 삭제 권한 및 Vocabulary Group별
+   소유권을 정한다.
 
 <!-- 논의 후 작성 -->
 
 <a id="stage-12"></a>
 ## 단계 12 — Materialization contract
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Bootstrap Vocabulary Provider의 identity를 read-only Knowledge Object 또는
+   ontology view로 materialize하는 canonical shape와 idempotency를 정한다.
+2. `[Blocking]` Kernel code와 read-only materialization의 설명이 충돌할 때 Runtime은 Kernel을
+   유지하고 drift를 보고한다는 최초 contract와 향후 authority 승격 조건을 정한다.
+3. `[Blocking]` `type.term` 자체를 포함한 bootstrap Term의 meta-circular materialization 순서와
+   virtual-to-materialized identity 보존을 정한다.
+4. `[Blocking]` Core Package를 한 번 컴파일하여 Runtime Rule Set으로 cache하고 원본 Rule Node를
+   실행마다 다시 읽지 않는 rebuild·cache contract를 정한다.
+5. `[Blocking]` Resolved Term Registry와 Runtime Rule Set의 재생성, 원자적 교체, 실패 recovery와
+   기존 cache 유지 조건을 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-13"></a>
 ## 단계 13 — Projection, query, explanation
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` field-encoded relation과 explicit Edge를 graph query와 projection에서 하나의
+   관계 view로 제공할 때 source 지위와 identity 차이를 보존하는 방식을 정한다.
+2. `[Blocking]` Resolved Term Registry를 query와 projection이 재사용하고 Vocabulary 검증을
+   매 조회마다 반복하지 않도록 cache freshness contract를 정한다.
+3. `[Blocking]` Constraint 결과를 operator, operand, governing Axiom과 source에 연결하여 사람이
+   확인할 수 있는 explanation을 정한다.
 
 <!-- 논의 후 작성 -->
 
 <a id="stage-14"></a>
 ## 단계 14 — Compatibility와 source migration
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Term semantic role 변경, Term replacement와 Vocabulary membership 변경이 기존
+   instance와 reference에 요구하는 migration을 정한다.
+2. `[Blocking]` 기존 source가 `type.term` profile, 단일 semantic role 또는 Package membership
+   규칙을 만족하지 않을 때 Compatibility, quarantine와 보정 방식을 정한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-15"></a>
 ## 단계 15 — Canonical core ontology vocabulary
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.term`, `type.group`, `type.package`, `type.rule`, Semantic Role Term과 표준 Group
+   membership Relation의 canonical Definition과 identity를 확정한다.
+2. `[Blocking]` 초기 네 operator 계열에서 승인된 operator identity와 Core Package가 참조할 Core
+   vocabulary를 확정한다.
+3. `[Blocking]` Core·Domain·profile Vocabulary Group의 canonical 구성과 활성 규칙 집합을 식별하는
+   revision 또는 version 방식을 정한다.
+4. `[Blocking]` Bootstrap Kernel registry와 Canonical vocabulary가 같은 identity와 의미를
+   제공하는지 inventory 및 drift 검사를 정의한다.
 
 <!-- 논의 후 작성 -->
 
@@ -1714,6 +2164,19 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 <a id="stage-17"></a>
 ## 단계 17 — Conformance와 reference domain
 
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.term` 식별, 단일 semantic role, 선택적 Vocabulary Group 검증과 Registry
+   cache 재사용을 검증하는 fixture를 작성한다.
+2. `[Blocking]` `type.package` 직접 membership, 모든 구성원의 `type.rule` 판정과 all-or-nothing
+   activation을 검증하는 fixture를 작성한다.
+3. `[Blocking]` 네 operator 계열의 입력·기대 결과, compile failure와 explanation fixture를
+   작성한다.
+4. `[Blocking]` 같은 source와 승인 Rule Set에서 conforming consumer가 같은 Term role,
+   reference, Constraint 결과와 활성 Runtime Rule Set을 얻는지 검증한다.
+
 <!-- 논의 후 작성 -->
 
 <a id="stage-18"></a>
@@ -1723,5 +2186,17 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <a id="stage-19"></a>
 ## 단계 19 — 확장 과제와 부록
+
+### 1.4에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Deferred]` 중첩 Package, Package import와 복수 활성 Package의 결합 정책
+2. `[Deferred]` Package 부분 활성화와 실패한 Rule만 제외하는 degraded mode
+3. `[Deferred]` Rule 간 호출·의존성, evaluation ordering, dependency graph, cycle과 fixed point
+4. `[Deferred]` 사용자 정의 operator, 임의 code 또는 외부 I/O를 안전하게 확장하는 sandbox와
+   governance
+5. `[Deferred]` 재귀 graph 탐색, 일반 query language와 대규모 reasoning을 operator로 제공하는
+   성능·종료·explainability contract
 
 <!-- 논의 후 작성 -->
