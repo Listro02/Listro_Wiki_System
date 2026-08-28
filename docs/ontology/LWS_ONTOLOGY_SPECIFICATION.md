@@ -778,7 +778,7 @@ Specification은 다음 조건을 모두 충족한 뒤에만 `Canonical`로 승�
 1. [단계 목적과 논의 범위](#stage-1-purpose)
 2. [기존 논의 목적의 포함 여부](#stage-1-agenda-audit)
 3. [확인된 Current source shape](#stage-1-current-shape)
-4. [L.W.S. Ontology의 정의 후보](#stage-1-ontology-definition)
+4. [L.W.S. Ontology의 정의](#stage-1-ontology-definition)
 5. [Knowledge Object와 Node/Edge](#stage-1-knowledge-object)
 6. [Ontology, Knowledge Graph, Schema, Validation과 Projection](#stage-1-concept-boundaries)
 7. [의미 규칙, JSON Schema와 Semantic Validator](#stage-1-schema-validation)
@@ -795,7 +795,7 @@ Specification은 다음 조건을 모두 충족한 뒤에만 `Canonical`로 승�
 <a id="stage-1-purpose"></a>
 ### 1.1 단계 목적과 논의 범위
 
-**Proposal**
+**Decision**
 
 단계 1의 목적은 L.W.S. Ontology가 무엇을 규정하는지, 어떤 대상과 층위를 다루는지, 그리고
 어디부터 애플리케이션 구현의 책임인지를 정하는 것이다. 이 단계에서는 Type, Relation, Tag,
@@ -889,9 +889,9 @@ JSON Schema와 Semantic Validator의 책임 및 conformance 관계는 1.7에서 
 않고, 승인된 규칙과 다르면 `Implementation Gap` 또는 Compatibility 대상으로 기록한다.
 
 <a id="stage-1-ontology-definition"></a>
-### 1.4 L.W.S. Ontology의 정의 후보
+### 1.4 L.W.S. Ontology의 정의
 
-**Proposal**
+**Decision**
 
 L.W.S. Ontology는 L.W.S. 지식 체계의 **normative semantic grammar**다. Knowledge Object의
 의미, semantic role, 관계, constraint와 canonical 표현을 규정하여, conforming consumer가
@@ -1283,19 +1283,110 @@ Bootstrap Kernel과 declarative Core Package의 최소 경계는 앞선 트리�
 **Proposal**
 
 `Knowledge Object`를 Node와 Edge의 공통 상위 개념으로 둔다. 이는 JSON 상속을 뜻하는 것이
-아니라, 두 object kind가 L.W.S.에서 identity를 가지고 참조·revision·lifecycle·metadata와
-semantic role의 적용 대상이 되는 first-class information object라는 뜻이다.
+아니라, 두 object kind가 L.W.S.에서 stable identity를 가지고 독립적으로 참조·resolve되며
+revision과 lifecycle의 적용 대상이 되는 first-class information object라는 뜻이다. 직접 수정,
+공개 열람, 물리적인 backlink 저장 또는 독립 JSON file 보유는 first-class의 성립 조건이 아니다.
+
+Knowledge Object의 canonical object kind는 `node`와 `edge`로 닫는다. Term, Package, Rule,
+Axiom과 Log 등은 제3의 object kind가 아니라 Node에 적용되는 Type별 구분이다. Edge도 identity와
+내용을 가진 first-class object지만 Node의 하위 Type은 아니다.
 
 ```text
 Knowledge Object
-├─ Node Object: 지식 대상을 표현한다.
-└─ Edge Object: Knowledge Object 사이의 관계 assertion을 표현한다.
+├─ Node
+│  ├─ 관계 assertion 자체가 아닌 지식 대상을 표현한다.
+│  └─ type은 Node Type Term을 참조한다.
+│
+└─ Edge
+   ├─ source와 target 사이의 관계 assertion을 표현한다.
+   └─ type은 Relation Type Term을 참조한다.
 ```
 
-Node와 Edge는 서로 구별되는 canonical object kind다. Edge를 Node의 하위 type으로 규정하지
-않는다. “Edge도 일종의 Node처럼 다룰 수 있다” 또는 “모든 것이 Node다”라는 표현은 Edge도
-identity와 내용을 가진 first-class object로 조회하고 참조할 수 있다는 저장 철학을 가리킨다.
-그 철학의 정확한 범위와 제한은 단계 2에서 더 논의한다.
+Node가 다른 Knowledge Object의 ID를 본문이나 `props`에서 언급한다는 사실만으로 Edge가 되지는
+않는다. Edge 여부는 다른 대상을 언급하는지가 아니라, object 자체의 주 기능이 `source`와
+`target` 사이의 관계 assertion을 first-class로 성립시키는지에 따라 판정한다.
+
+#### Term, Definition과 관계 표현
+
+Type Term과 Relation Type Term은 모두 `type.term`인 Node Knowledge Object로 둔다. 두 Term은
+각각 Node의 `type`과 Edge의 `type`에서 참조되며, 구체적인 semantic role과 contract는 단계
+3부터 단계 6에서 확정한다. Edge 자체에 `type.term`을 부여하지 않는다. Edge의 `type`은 그
+Edge가 주장하는 관계의 Relation Type Term을 식별해야 하기 때문이다.
+
+```mermaid
+flowchart LR
+    NT["Node Type Term\nNode / type.term"] -->|"Node.type"| N["Node instance"]
+    RT["Relation Type Term\nNode / type.term"] -->|"Edge.type"| E["Edge instance"]
+    E -->|"source"| N
+    E -->|"target"| O["Knowledge Object"]
+```
+
+`Definition`은 별도 object kind나 Node Type이 아니다. Node와 Edge가 자신에 대한 사람용 자연어
+설명을 `props`의 ontology 영역에 기록할 수 있는 속성이다. Definition은 그 자체로 실행 규칙이나
+관계 assertion이 아니며, 정확한 path, value shape, 다국어와 citation contract는 단계 7과 단계
+8에서 확정한다.
+
+`props`에 다른 Knowledge Object의 ID를 기록할 수 있지만, addressability 자체가 모든 연결 대상
+ID를 `props`에 복제해야 한다는 뜻은 아니다. 의미 있는 Property reference만 canonical source에
+기록하고, 일반적인 연결 탐색·incoming reference·backlink와 adjacency는 `props` reference와
+explicit Edge로부터 만든 재구성 가능한 projection으로 제공하는 방향을 채택한다. field-encoded
+relation과 explicit Edge의 정확한 경계는 단계 6, reference value shape는 단계 7, 탐색 projection은
+단계 12와 단계 13에서 확정한다.
+
+#### 공통 contract
+
+모든 Knowledge Object에는 다음 공통 contract를 적용한다.
+
+```text
+모든 Knowledge Object
+├─ stable identity를 가진다.
+├─ canonical ID로 addressable하다.
+├─ object_kind가 node 또는 edge로 명시된다.
+├─ 현재 canonical object의 mutation revision을 나타내는 rev를 가진다.
+└─ 현재 lifecycle 상태를 나타내는 status를 가진다.
+```
+
+구조적으로 `id`, `object_kind`, `type`, `rev`, `status`는 Node와 Edge의 공통 key다. `props`는
+두 kind가 부가적인 의미 정보와 Definition을 기록할 수 있는 공통 확장 영역으로 둔다. `props`를
+빈 object인 경우에도 반드시 materialize할지와 정확한 canonical shape는 단계 7에서 결정한다.
+
+Node의 `type`은 Node Type Term을, Edge의 `type`은 Relation Type Term을 참조한다. Edge에는
+추가로 `source`와 `target`이 필요하다. 모든 공통 key의 값이 별도 Knowledge Object일 필요는
+없다. `id`, `rev`, timestamp와 boolean 같은 구조·운영 값은 literal일 수 있다. 반면 여러
+Knowledge Object에서 공유되고 conforming consumer가 동일한 의미로 판정해야 하며 독립적인
+정의·검증·확장·governance가 필요한 값은 Ontology Term으로 정의한다.
+
+`rev`는 현재 canonical object에 승인·적용된 mutation revision이다. consumer는 기본적으로
+최종 적용된 canonical object만 해석과 실행에 사용하며, 과거 revision 가운데 하나를 현재
+해석 대상으로 선택하는 state model은 두지 않는다. 이전 revision의 변경 내용은 Log Node로
+추적한다. `rev`는 ontology semantic version, lifecycle status 또는 runtime activation state가
+아니다.
+
+`status`는 현재 Knowledge Object를 어떻게 취급해야 하는지를 나타내는 공통 lifecycle key다.
+그 값은 lifecycle vocabulary에 속한 Ontology Term을 참조한다. 공통 lifecycle vocabulary를
+두되, 각 Type Term은 자신에게 허용되는 추가 status와 transition을 규정할 수 있다. validation
+결과, Rule compile 결과, Package 또는 Runtime Rule Set의 activation과 mutation policy는
+lifecycle과 다른 축이므로 `status`에 혼합하지 않는다. 공통 상태 집합, Type별 확장과 transition
+규칙은 단계 4에서 확정한다.
+
+`authoritative origin과 변경 provenance`는 Knowledge Object 자체의 필수 공통 key 또는 독립된
+최소 성질로 두지 않는다. 저장 권위는 Object Reader와 canonical source resolution이, 변경 이력은
+Log Node가, 다른 Knowledge Object로부터의 의미적 유래는 명시적인 Relation Type Edge가 담당한다.
+source authority는 단계 2, Log와 mutation history는 단계 12, 의미적 provenance와 projection은
+단계 6과 단계 13에서 구체화한다.
+
+#### Log Node
+
+과거 변경 기록은 `type.log`인 Log Node로 남긴다. Log가 기록한 대상, 이전·다음 `rev`, 실행
+주체와 시각, 변경 내용과 근거를 포함하는 사건 payload는 최초 생성 뒤 수정할 수 없는
+append-only record다.
+
+Log Node의 lifecycle `status`는 정정 또는 대체 절차에서 변경할 수 있다. 기존 Log의 사건
+payload를 정정해야 할 때에는 원본을 덮어쓰지 않고 새 Log Node를 생성한 뒤, 새 Log에서 기존
+Log로 정정 또는 대체 관계를 나타내는 Edge를 연결한다. 이 원자적 처리에 포함된 기존 Log의
+status 변경을 위해 별도의 Log Node를 다시 만들지는 않는다. 따라서 log-of-log 재귀 없이 원본
+기록과 정정 관계를 함께 보존한다. `type.log`의 정확한 payload, 허용 status, relation, mutation
+권한과 transaction contract는 후속 Event·history·lifecycle 단계에서 확정한다.
 
 Edge가 first-class object라는 이유만으로 모든 Relation의 `source`와 `target`에 Edge를 무제한
 허용하지 않는다. 현재 논의의 기준안은 다음과 같다.
@@ -1319,7 +1410,7 @@ Edge가 first-class object라는 이유만으로 모든 Relation의 `source`와 
 | `durable source` | process 재시작, cache 삭제 또는 index rebuild 뒤에도 남아 canonical object를 다시 구성할 수 있는 지속 저장 원본. 현재의 repository JSON Node/Edge가 대표 후보다. |
 | `virtual source` | 별도 JSON object가 없어도 bootstrap registry나 명시적 provider가 canonical ID, 의미와 shape를 결정적으로 제공하는 선언된 source. 단순한 임시 계산 결과나 우연한 fallback은 포함하지 않는다. |
 
-여기서 `durable`과 `virtual`은 Knowledge Object의 종류가 아니라 **source 지위와 provenance**를
+여기서 `durable`과 `virtual`은 Knowledge Object의 종류가 아니라 **source 지위와 authority**를
 설명하려던 표현이다. “source”라는 말이 persisted object와 virtual definition provider를 함께
 지칭하여 혼동을 만들 수 있으므로, 단계 2에서는 다음을 다시 결정해야 한다.
 
@@ -1336,18 +1427,16 @@ Edge가 first-class object라는 이유만으로 모든 Relation의 `source`와 
 
 #### 상세 논의 질문
 
-1. Knowledge Object가 되기 위한 최소 조건은 stable identity와 addressability뿐인가, 아니면
-   revision, lifecycle, provenance와 독립적인 source 지위도 필수인가?
-2. first-class라는 말은 읽기·참조만 뜻하는가, 아니면 직접 수정, history, permission,
-   backlink와 audit의 공통 지원까지 뜻하는가?
-3. 모든 Knowledge Object가 `object_kind`를 가져야 하는가? 향후 Node/Edge 외의 object kind를
-   허용할 것인가, 아니면 모든 확장은 두 kind의 semantic profile로만 표현할 것인가?
-4. Node는 “지식 대상”, Edge는 “관계 assertion”이라는 구분이 Definition, Axiom, Event와
-   derived assertion에도 충분한가?
-5. Edge를 endpoint로 참조할 때 해당 Edge의 상태·visibility·유효 기간이 바뀌면 이를 참조하는
+1. 공통 lifecycle vocabulary의 최소 상태와 모든 Type에 공통인 transition은 무엇인가? Type별
+   status 확장은 어떤 Term과 Constraint로 선언하는가?
+2. Log Node의 payload, 정정·대체 Relation, status 전이와 원자적 생성 절차는 어떤 canonical
+   contract를 가지는가?
+3. Edge를 endpoint로 참조할 때 해당 Edge의 status·visibility·유효 기간이 바뀌면 이를 참조하는
    meta-relation의 의미는 어떻게 달라지는가?
-6. source가 없는 virtual term이 Knowledge Object라면 revision, lifecycle, permission과
-   provenance를 어디에서 제공하는가?
+4. source가 없는 virtual term을 Knowledge Object로 볼 것인가? 그렇다면 `rev`, `status`, permission과
+   source authority를 어느 provider가 어떤 형태로 제공하는가?
+5. Axiom, Event와 derived assertion을 각각 어떤 Node Type 또는 Edge assertion으로 판정하며,
+   canonical source Knowledge Object와 derived projection의 경계를 어디에 두는가?
 
 <a id="stage-1-concept-boundaries"></a>
 ### 1.6 Ontology, Knowledge Graph, Schema, Validation과 Projection
