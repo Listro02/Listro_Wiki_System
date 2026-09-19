@@ -45,15 +45,14 @@ compatibility/migration 기록으로 정리한다.
 3. Ontology graph, domain ontology, instance graph의 층위
 4. Ontology가 책임지는 것과 책임지지 않는 것
 5. 초기 목표와 non-goal
-6. 명시적 선언과 자동 추론의 경계
-7. Open-world와 closed-world 해석 정책
+6. Open-world와 closed-world 해석 정책
 
 ### [단계 2 — 저장 철학과 Ontology bootstrap](#stage-2)
 
 1. “의미 있는 모든 것은 Node이다”의 정확한 범위
 2. First-class Node/Edge와 literal/property의 판정 기준
-3. Durable Node/Edge와 event/history의 source-of-truth 지위
-4. Generated projection과 derived assertion의 지위
+3. Source Knowledge Object와 event/history의 source-of-truth 지위
+4. Index·projection과 rebuildable artifact의 지위
 5. 최소 bootstrap kernel
 6. In-code registry와 materialized ontology의 관계
 7. Meta-circular Type과 self-description 규칙
@@ -187,7 +186,7 @@ compatibility/migration 기록으로 정리한다.
 2. Core ontology materialization
 3. Virtual/reference term materialization
 4. Domain ontology materialization
-5. Projection, migration, inference와의 구분
+5. Projection, migration과 materialization의 구분
 6. Dependency ordering과 bootstrap sequence
 7. Dry-run inventory와 impact report
 8. Create, skip-equivalent, conflict-preserved, repair-proposed
@@ -202,8 +201,8 @@ compatibility/migration 기록으로 정리한다.
 1. Ontology term projection
 2. Term usage와 reverse usage
 3. Assertion과 constraint projection
-4. Type/Group hierarchy closure
-5. Direct/derived/provenance 구분
+4. Type/Group hierarchy projection
+5. Source/projection과 backing source 구분
 6. Validation issue projection
 7. Effective permission explanation
 8. Permission-aware usage count와 metadata 보호
@@ -783,10 +782,9 @@ Specification은 다음 조건을 모두 충족한 뒤에만 `Canonical`로 승�
 6. [Ontology, Knowledge Graph, Schema, Validation과 Projection](#stage-1-concept-boundaries)
 7. [의미 규칙, JSON Schema와 Semantic Validator](#stage-1-schema-validation)
 8. [Ontology graph, domain ontology와 instance graph의 층위](#stage-1-layers)
-9. [Canonical source와 derived artifact](#stage-1-source-derived)
+9. [Source Knowledge Object와 rebuildable artifact](#stage-1-source-derived)
 10. [책임 범위와 구현 경계](#stage-1-boundary)
 11. [초기 목표와 non-goal](#stage-1-goals)
-12. [명시적 선언과 자동 추론의 경계](#stage-1-inference)
 13. [Open-world와 closed-world 해석 정책](#stage-1-world-assumption)
 14. [추가 시스템 경계 질문](#stage-1-cross-cutting)
 15. [논의해야 할 사항](#stage-1-unresolved)
@@ -825,11 +823,11 @@ Property 또는 Axiom의 개별 vocabulary를 열거하거나 `type.service` 같
 | 기존 논의 목적 | 보강 전 포함 상태 | 확인 결과와 남은 핵심 |
 | --- | --- | --- |
 | L.W.S.에서 Ontology의 정의 | 상당 부분 포함 | semantic grammar와 canonical object grammar라는 정의 후보가 있다. Knowledge Object의 최소 성질과 ontology가 L.W.S. 로직 전체 중 어디까지를 지배하는지는 미확정이다. |
-| Ontology, Knowledge Graph, Schema, Validation, Projection의 구분 | 부분 포함 | JSON Schema, Semantic Validator와 derived artifact는 구분했다. Knowledge Graph 자체의 정의와 다섯 개념 사이 권위·입출력 관계는 아직 명시하지 않았다. |
-| Ontology graph, domain ontology, instance graph의 층위 | 상당 부분 포함 | Meta, Core, Domain, Instance, Derived 후보가 있다. `Ontology graph`가 이 층위들을 포괄하는 graph인지 별도 층위인지와 한 object의 층위 소속 규칙은 미확정이다. |
+| Ontology, Knowledge Graph, Schema, Validation, Projection의 구분 | 부분 포함 | JSON Schema, Semantic Validator와 rebuildable artifact는 구분했다. Knowledge Graph 자체의 정의와 다섯 개념 사이 권위·입출력 관계는 아직 명시하지 않았다. |
+| Ontology graph, domain ontology, instance graph의 층위 | 상당 부분 포함 | Meta, Core, Domain, Instance, Rebuildable 후보가 있다. `Ontology graph`가 이 층위들을 포괄하는 graph인지 별도 층위인지와 한 object의 층위 소속 규칙은 미확정이다. |
 | Ontology가 책임지는 것과 책임지지 않는 것 | 상당 부분 포함 | 의미에 영향을 주는 JSON shape와 내부 구현을 구분했다. query, permission, lifecycle, provenance 중 무엇이 ontology 의미이고 무엇이 애플리케이션 정책인지는 더 나눠야 한다. |
 | 초기 목표와 non-goal | 부분 포함 | non-goal 후보는 있으나 긍정적 목표, 우선순위와 성공 판정 기준이 충분히 정리되지 않았다. |
-| 명시적 선언과 자동 추론의 경계 | 최소 포함 | source와 derived artifact는 구분했지만 어떤 inference를 허용하고 그 결과의 권위·충돌·provenance를 어떻게 처리할지는 논의하지 않았다. |
+| 명시적 선언과 자동 추론의 경계 | 단계 19로 이관 | 최초 Canonical은 derived assertion을 생성하지 않는다. 자동 inference, 결과의 권위·충돌·provenance와 Source Edge 생성 보조 기능은 확장 reasoning 기능으로 함께 정의한다. |
 | Open-world와 closed-world 해석 정책 | 미포함에 가까움 | `Unknown`, `Absent`, `Invalid` 쟁점만 등록되어 있다. 적용 단위, negative assertion, permission과 temporal context까지 논의해야 한다. |
 
 따라서 기존 일곱 목적은 목차상 모두 추적되고 있었지만, 보강 전 상태만으로 완료된 항목은
@@ -1134,13 +1132,15 @@ Bootstrap Kernel은 ontology의 모든 Core 규칙을 code로 내재화하는 �
 둔다. 그 기반 위에서 표현할 수 있는 L.W.S. Core 의미 규칙은 `type.rule` Constraint로 Core
 Package에 선언하고, 활성화할 때 한 번 컴파일하여 Runtime Rule Set으로 cache한다.
 
-Kernel이 제공하는 `type.term`, `type.group`, `type.package`, `type.rule`, operator와 그 밖의 bootstrap
-identity는 향후 사람이 조회할 수 있는 read-only Knowledge Object로 materialize하거나 동일한
-read-only ontology view로 노출할 수 있다. 최초 구조에서 이 표현은 주로 자연어 설명과 탐색을
-위한 비실행 view이며 Kernel code가 실행 권위를 가진다. 둘의 설명이 충돌해도 Runtime은 현재
-Kernel code를 계속 사용하고 관리자가 documentation/materialization drift를 확인하여 개선한다.
-read-only object에 구조화된 실행 정의를 추가하거나 이를 실행 권위로 승격하는 문제는 단계
-2에서 authority 원칙을 정하고, 단계 12에서 materialization contract를 구체화한다.
+Kernel code가 사용하는 `type.term`, `type.group`, `type.package`, `type.rule`, operator와 그 밖의
+bootstrap identity는 사람이 조회할 수 있는 read-only Node Knowledge Object로 materialize한다.
+Kernel code와 materialized bootstrap Node를 각각 별도의 definition이나 Knowledge Object로 두지
+않는다. Kernel code는 bootstrap 동작의 구현이고, materialized bootstrap Node가 해당 identity의
+유일한 Knowledge Object이자 자연어 Definition이다. Node는 일반 사용자가 수정하지 않으며 승인된
+system materializer 또는 복구 절차가 생성·복구한다. Node의 설명과 실제 Kernel 동작이 충돌해도
+Runtime은 현재 Kernel code를 계속 사용하고 관리자가 documentation/materialization drift를
+확인하여 개선한다. 정확한 Node shape, materialization과 drift 검사는 단계 2와 단계 12에서
+구체화한다.
 
 Bootstrap Type을 나타내는 Term object와 그 Type을 사용하는 instance는 구별한다. 예를 들어
 `id == type.rule`인 bootstrap Term Node 자체는 `Node.type == type.term`이고 Type semantic role을
@@ -1280,16 +1280,31 @@ Bootstrap Kernel과 declarative Core Package의 최소 경계는 앞선 트리�
 <a id="stage-1-knowledge-object"></a>
 ### 1.5 Knowledge Object와 Node/Edge
 
-**Proposal**
+**Decision**
+
+#### 1.5의 목적과 적용 범위
+
+이 절은 Knowledge Object의 전체적인 최소 틀을 확립한다. 직접 확립할 대상은 다음과 같다.
+
+1. `Knowledge Object`와 canonical object kind인 `node`·`edge`의 관계
+2. Node와 Edge를 구분하는 의미 기준
+3. 두 object kind가 공유하는 최소 contract
+4. Term, Definition, Axiom, Event와 derived assertion이 이 object kind 경계에 어떻게 놓이는지
+
+Type·Relation Type별 세부 grammar, Source Knowledge Object의 저장·조회 절차, event/history의 물리 저장 형식,
+추론·materialization 정책과 query 표현은 이 절의 object kind 경계를 바꾸지 않는 후속 논의다.
+이 절에서는 각 대상이 Node, Edge 또는 Knowledge Object가 아닌 derived·운영 record 중 어디에
+놓일 수 있는지만 확인하고, 세부 규칙은 아래에 명시한 주 책임 단계로 이관한다.
 
 `Knowledge Object`를 Node와 Edge의 공통 상위 개념으로 둔다. 이는 JSON 상속을 뜻하는 것이
 아니라, 두 object kind가 L.W.S.에서 stable identity를 가지고 독립적으로 참조·resolve되며
 revision과 lifecycle의 적용 대상이 되는 first-class information object라는 뜻이다. 직접 수정,
 공개 열람, 물리적인 backlink 저장 또는 독립 JSON file 보유는 first-class의 성립 조건이 아니다.
 
-Knowledge Object의 canonical object kind는 `node`와 `edge`로 닫는다. Term, Package, Rule,
-Axiom과 Log 등은 제3의 object kind가 아니라 Node에 적용되는 Type별 구분이다. Edge도 identity와
-내용을 가진 first-class object지만 Node의 하위 Type은 아니다.
+Knowledge Object의 canonical object kind는 `node`와 `edge`로 닫는다. Term, Package, Rule과
+Axiom은 제3의 object kind가 아니라 Node에 적용되는 Type별 구분이다. Event 또는 mutation
+history record를 Knowledge Object로 채택하는 경우에도 새 object kind를 추가하지 않고 Node로
+표현해야 한다. Edge도 identity와 내용을 가진 first-class object지만 Node의 하위 Type은 아니다.
 
 ```text
 Knowledge Object
@@ -1306,7 +1321,9 @@ Node가 다른 Knowledge Object의 ID를 본문이나 `props`에서 언급한다
 않는다. Edge 여부는 다른 대상을 언급하는지가 아니라, object 자체의 주 기능이 `source`와
 `target` 사이의 관계 assertion을 first-class로 성립시키는지에 따라 판정한다.
 
-#### Term, Definition과 관계 표현
+#### Object kind 경계를 확인하는 적용 사례
+
+##### Term, Definition과 관계 표현
 
 Type Term과 Relation Type Term은 모두 `type.term`인 Node Knowledge Object로 둔다. 두 Term은
 각각 Node의 `type`과 Edge의 `type`에서 참조되며, 구체적인 semantic role과 contract는 단계
@@ -1317,14 +1334,24 @@ Edge가 주장하는 관계의 Relation Type Term을 식별해야 하기 때문�
 flowchart LR
     NT["Node Type Term\nNode / type.term"] -->|"Node.type"| N["Node instance"]
     RT["Relation Type Term\nNode / type.term"] -->|"Edge.type"| E["Edge instance"]
-    E -->|"source"| N
-    E -->|"target"| O["Knowledge Object"]
+    E -->|"source"| S["Knowledge Object"]
+    E -->|"target"| T["Knowledge Object"]
 ```
+
+이 도식은 Edge endpoint의 구조적 대상이 Knowledge Object라는 점만 나타낸다. 모든 Relation이
+Edge endpoint를 허용한다는 뜻은 아니며, 기본 endpoint 제한과 Relation Type별 opt-in contract는
+단계 6으로 이관한 기준안과 후속 논의에서 정한다.
 
 `Definition`은 별도 object kind나 Node Type이 아니다. Node와 Edge가 자신에 대한 사람용 자연어
 설명을 `props`의 ontology 영역에 기록할 수 있는 속성이다. Definition은 그 자체로 실행 규칙이나
 관계 assertion이 아니며, 정확한 path, value shape, 다국어와 citation contract는 단계 7과 단계
 8에서 확정한다.
+
+실제 Axiom Node에는 `type.axiom`을 적용한다. `type.axiom` 자체는 Type semantic role을 가진
+`type.term` Node이고, 그 Type을 사용하는 Axiom Node는 Term이 아니라 ontology가 채택한 비실행
+의미 명제다. 따라서 Axiom은 ontology graph 또는 package의 구성원이 될 수 있지만 vocabulary
+Term과 semantic statement를 같은 분류로 합치지는 않는다. Axiom과 executable `type.rule`
+Constraint의 추적 관계와 canonical shape는 단계 6과 단계 8에서 확정한다.
 
 `props`에 다른 Knowledge Object의 ID를 기록할 수 있지만, addressability 자체가 모든 연결 대상
 ID를 `props`에 복제해야 한다는 뜻은 아니다. 의미 있는 Property reference만 canonical source에
@@ -1342,6 +1369,7 @@ relation과 explicit Edge의 정확한 경계는 단계 6, reference value shape
 ├─ stable identity를 가진다.
 ├─ canonical ID로 addressable하다.
 ├─ object_kind가 node 또는 edge로 명시된다.
+├─ kind에 맞는 primary system contract 또는 관계 의미를 type으로 식별한다.
 ├─ 현재 canonical object의 mutation revision을 나타내는 rev를 가진다.
 └─ 현재 lifecycle 상태를 나타내는 status를 가진다.
 ```
@@ -1356,11 +1384,21 @@ Node의 `type`은 Node Type Term을, Edge의 `type`은 Relation Type Term을 참
 Knowledge Object에서 공유되고 conforming consumer가 동일한 의미로 판정해야 하며 독립적인
 정의·검증·확장·governance가 필요한 값은 Ontology Term으로 정의한다.
 
+Node의 `type`은 domain classification 전부를 표현하는 필드가 아니라 정확히 하나의 primary
+system contract를 선택한다. 저장·canonical shape, mutation, lifecycle 제한, 전용 validation과
+Kernel 또는 Compiler 처리처럼 시스템 동작을 바꾸는 구분은 Node Type으로 표현한다. Node의
+Tag는 0개 이상의 domain·semantic classification을 표현한다. Tag가 semantic Constraint를
+적용할 수는 있지만 기본 저장·mutation contract를 바꾸지는 않는다. 그러한 변경이 필요하면
+Type contract로 승격해야 한다. Edge의 `type`은 이 Node 규칙과 달리 `source`와 `target` 사이에
+주장된 관계의 의미를 나타내는 Relation Type이다. Type cardinality, Type 변경 migration, Tag
+상충과 hierarchy의 세부 규칙은 단계 5에서 확정한다.
+
 `rev`는 현재 canonical object에 승인·적용된 mutation revision이다. consumer는 기본적으로
 최종 적용된 canonical object만 해석과 실행에 사용하며, 과거 revision 가운데 하나를 현재
-해석 대상으로 선택하는 state model은 두지 않는다. 이전 revision의 변경 내용은 Log Node로
-추적한다. `rev`는 ontology semantic version, lifecycle status 또는 runtime activation state가
-아니다.
+해석 대상으로 선택하는 state model은 두지 않는다. 이전 revision의 변경 내용은 canonical
+mutation history로 추적한다. 시간순으로 누적되는 history·Log를 `Nodes` 형식의 Node Knowledge
+Object로 표현할지는 단계 2와 단계 12에서 결정한다. `rev`는 ontology semantic version,
+lifecycle status 또는 runtime activation state가 아니다.
 
 `status`는 현재 Knowledge Object를 어떻게 취급해야 하는지를 나타내는 공통 lifecycle key다.
 그 값은 lifecycle vocabulary에 속한 Ontology Term을 참조한다. 공통 lifecycle vocabulary를
@@ -1370,73 +1408,56 @@ lifecycle과 다른 축이므로 `status`에 혼합하지 않는다. 공통 상�
 규칙은 단계 4에서 확정한다.
 
 `authoritative origin과 변경 provenance`는 Knowledge Object 자체의 필수 공통 key 또는 독립된
-최소 성질로 두지 않는다. 저장 권위는 Object Reader와 canonical source resolution이, 변경 이력은
-Log Node가, 다른 Knowledge Object로부터의 의미적 유래는 명시적인 Relation Type Edge가 담당한다.
-source authority는 단계 2, Log와 mutation history는 단계 12, 의미적 provenance와 projection은
-단계 6과 단계 13에서 구체화한다.
+최소 성질로 두지 않는다. Source Knowledge Object, mutation history와 명시적인 provenance
+Relation이 각각 필요한 추적을 제공한다.
 
-#### Log Node
+#### Identity uniqueness
 
-과거 변경 기록은 `type.log`인 Log Node로 남긴다. Log가 기록한 대상, 이전·다음 `rev`, 실행
-주체와 시각, 변경 내용과 근거를 포함하는 사건 payload는 최초 생성 뒤 수정할 수 없는
-append-only record다.
+Knowledge Object의 canonical ID는 전체 Node·Edge와 등록된 provider-backed Knowledge Object
+공간에서 유일해야 한다. 하나의 canonical ID는 정확히 하나의 논리적 Knowledge Object만
+식별한다. 같은 ID를 서로 다른 Node와 Edge 또는 서로 다른 Knowledge Object가 사용하는 것은
+우선순위로 해결하지 않고 identity conflict로 처리한다. 동일한 Knowledge Object의 과거
+revision을 가리키는 history 정보는 새로운 Knowledge Object identity가 아니므로 이 유일성
+위반이 아니다.
 
-Log Node의 lifecycle `status`는 정정 또는 대체 절차에서 변경할 수 있다. 기존 Log의 사건
-payload를 정정해야 할 때에는 원본을 덮어쓰지 않고 새 Log Node를 생성한 뒤, 새 Log에서 기존
-Log로 정정 또는 대체 관계를 나타내는 Edge를 연결한다. 이 원자적 처리에 포함된 기존 Log의
-status 변경을 위해 별도의 Log Node를 다시 만들지는 않는다. 따라서 log-of-log 재귀 없이 원본
-기록과 정정 관계를 함께 보존한다. `type.log`의 정확한 payload, 허용 status, relation, mutation
-권한과 transaction contract는 후속 Event·history·lifecycle 단계에서 확정한다.
+이 원칙은 이후 `type.axiom` Node로 materialize할 수 있으며, Core Package보다 먼저 object의
+전역 유일성을 확인할 수 있어야 하므로 Bootstrap Kernel invariant로 집행한다. 유일성을 집행하기
+위한 구체적인 저장·검사·충돌 처리와 recovery 절차는 1.9, 단계 2와 단계 12로 이관한다.
 
-Edge가 first-class object라는 이유만으로 모든 Relation의 `source`와 `target`에 Edge를 무제한
-허용하지 않는다. 현재 논의의 기준안은 다음과 같다.
+#### 이 절에서 확인한 object kind 경계
 
-> Relation semantic profile이 `source` 또는 `target`에 `edge` object kind를 명시적으로
-> 허용한 경우에만 Edge endpoint를 유효하게 본다. 해당 정책이 없으면 Node endpoint만
-> 허용하는 방향으로 해석한다.
+| 대상 | 1.5에서 확인한 경계 | 세부 규칙의 주 책임 위치 |
+| --- | --- | --- |
+| 현실이나 domain의 사건에 관한 지식 | 별도 Event kind가 아닌 일반 Node다. domain·semantic classification은 Tag로 표현할 수 있다. | 단계 5 |
+| Mutation Event, Log, history, patch와 journal | Knowledge Object로 채택한다면 Node여야 한다. 시간순으로 쌓이는 여러 기록을 다루는 Node 형식의 후보 명칭은 `Nodes`로 둔다. `Nodes`의 Type, object 경계, JSONL을 포함한 물리 표현, entry의 identity, append와 recovery 규칙은 이 절에서 확정하지 않는다. | 1.9, 단계 2·12 |
+| Derived assertion | 최초 Canonical은 derived assertion을 생성하지 않는다. Index와 projection은 Source Knowledge Object를 기반으로 재구성되며 Knowledge Object가 아니다. 향후 reasoning 기능이 first-class 관계 Knowledge Object를 생성한다면 object kind는 Edge여야 하며, 해당 기능은 단계 19에서 별도로 정의한다. | 1.9, 단계 19 |
+| Edge endpoint | 구조적으로 Knowledge Object를 가리킬 수 있다. Relation별로 Edge endpoint를 허용할 조건과 기본 폐쇄 정책은 이 절에서 확정하지 않는다. | 단계 6 |
 
-이 기준안은 Edge endpoint의 기본 폐쇄 정책을 제시할 뿐이며, Relation별 endpoint policy와
-`rel.instantiates` 같은 구체적인 relation은 단계 6에서 확정한다. Relation Term 사이의 계층
-관계와 실제 Edge Instance가 Definition 또는 evidence를 참조하는 meta-relation도 구분해서
-논의해야 한다.
+#### 1.5 승인 상태
 
-#### `durable source`와 `virtual source`의 현재 의미 후보
+최소 공통 contract는 `id`, `object_kind`, `type`, `rev`, `status`와 앞서 정의한 identity·addressability
+보증으로 완료 승인되었다. 최초 Canonical은 derived assertion을 생성하지 않는다. Index와
+projection은 Source Knowledge Object를 기반으로 재구성되며 Knowledge Object가 아니다. 향후
+reasoning 기능이 first-class 관계 Knowledge Object를 생성한다면 object kind는 Edge여야 하며,
+해당 기능은 단계 19에서 별도로 정의한다. Event·history의 Knowledge Object 채택 여부와 physical
+materialization은 아래 후속 단계로 이관한다. 이 이관 사항은
+1.5의 최소 Node/Edge 경계와 공통 contract를 변경하지 않는다.
+1.5의 목적과 적용 범위, canonical object kind, 공통 contract, identity uniqueness와 이관 경계는
+`Decision`으로 승인되었다. 후속 단계는 이를 세분화할 수 있지만 재승인 없이 의미 경계를
+재정의할 수 없다.
 
-앞선 논의에서 Knowledge Object의 성질로 사용한 “durable source 또는 명시된 virtual source를
-가진다”는 표현은 아직 확정된 용어가 아니다. 현재 의도는 다음과 같다.
+#### 후속 단계로 이관한 세부사항
 
-| 용어 후보 | 의도한 의미 |
+| 주 책임 단계 | 이관된 논의사항 |
 | --- | --- |
-| `durable source` | process 재시작, cache 삭제 또는 index rebuild 뒤에도 남아 canonical object를 다시 구성할 수 있는 지속 저장 원본. 현재의 repository JSON Node/Edge가 대표 후보다. |
-| `virtual source` | 별도 JSON object가 없어도 bootstrap registry나 명시적 provider가 canonical ID, 의미와 shape를 결정적으로 제공하는 선언된 source. 단순한 임시 계산 결과나 우연한 fallback은 포함하지 않는다. |
-
-여기서 `durable`과 `virtual`은 Knowledge Object의 종류가 아니라 **source 지위와 authority**를
-설명하려던 표현이다. “source”라는 말이 persisted object와 virtual definition provider를 함께
-지칭하여 혼동을 만들 수 있으므로, 단계 2에서는 다음을 다시 결정해야 한다.
-
-1. `canonical source record`, `materialized source object`, `declared virtual term`처럼 용어를
-   분리할지
-2. virtual term이 실제 Knowledge Object인지, resolver가 제공하는 reference인지
-3. virtual term의 권위, revision, lifecycle과 materialization 이전·이후 identity를 어떻게
-   유지할지
-4. 모든 Knowledge Object가 반드시 source-backed여야 하는지, source가 아닌 선언 provider도
-   허용할지
-
-따라서 현시점에는 “durable source 또는 명시된 virtual source를 가진다”를 Knowledge Object의
-확정 필수 성질로 사용하지 않는다.
-
-#### 상세 논의 질문
-
-1. 공통 lifecycle vocabulary의 최소 상태와 모든 Type에 공통인 transition은 무엇인가? Type별
-   status 확장은 어떤 Term과 Constraint로 선언하는가?
-2. Log Node의 payload, 정정·대체 Relation, status 전이와 원자적 생성 절차는 어떤 canonical
-   contract를 가지는가?
-3. Edge를 endpoint로 참조할 때 해당 Edge의 status·visibility·유효 기간이 바뀌면 이를 참조하는
-   meta-relation의 의미는 어떻게 달라지는가?
-4. source가 없는 virtual term을 Knowledge Object로 볼 것인가? 그렇다면 `rev`, `status`, permission과
-   source authority를 어느 provider가 어떤 형태로 제공하는가?
-5. Axiom, Event와 derived assertion을 각각 어떤 Node Type 또는 Edge assertion으로 판정하며,
-   canonical source Knowledge Object와 derived projection의 경계를 어디에 두는가?
+| 단계 2 | `Nodes`의 논리적 Knowledge Object 경계, provider-backed Knowledge Object의 지위와 bootstrap object의 논리적 identity |
+| 단계 4 | 공통 lifecycle vocabulary, Type별 status 확장·transition과 object revision의 세부 의미 |
+| 단계 5 | Node Type의 단일 system contract, Type 변경 migration, Tag cardinality·hierarchy·상충과 semantic Constraint 경계 |
+| 단계 6 | Edge endpoint opt-in, meta-relation, field-encoded reference와 explicit Edge의 경계 |
+| 단계 7·8 | `props` reference와 Definition의 shape, `type.axiom` Node의 canonical grammar |
+| 단계 12 | global Node·Edge·provider-backed Knowledge Object ID uniqueness의 원자적 집행, integrity 검사와 recovery, `Nodes`와 JSONL/Event/Log의 물리 저장, history·patch·recovery와 bootstrap materialization |
+| 단계 13 | adjacency·incoming reference·backlink와 source 기반 index·projection의 재구성 |
+| 단계 19 | derived assertion의 의미·추론 규칙·provenance·projection·Source Edge 생성과 first-class 관계 Knowledge Object materialization |
 
 <a id="stage-1-concept-boundaries"></a>
 ### 1.6 Ontology, Knowledge Graph, Schema, Validation과 Projection
@@ -1469,8 +1490,8 @@ Ontology ──해석·constraint──> Knowledge Graph
 
 #### 상세 논의 질문
 
-1. Knowledge Graph는 canonical source object만을 뜻하는가, ontology term과 허용된 derived
-   assertion까지 포함하는 논리적 view인가?
+1. Knowledge Graph는 Source Knowledge Object만을 뜻하는가, ontology term과 source 기반
+   projection까지 포함하는 논리적 view인가?
 2. invalid 또는 unresolved source object는 Knowledge Graph의 일부인가, 별도 quarantine
    영역인가, 아니면 graph에는 남되 validity 상태만 달라지는가?
 3. Ontology graph 자체도 Knowledge Graph의 일부인가? 그렇다면 ontology term이 자신을
@@ -1481,8 +1502,8 @@ Ontology ──해석·constraint──> Knowledge Graph
    또는 validation phase별 결과로 함께 허용할 수 있는가?
 6. Validation 실패는 object의 저장·조회·관계 참여 중 무엇을 막는가? advisory와 blocking
    validation의 구분은 validity 의미를 바꾸는가, enforcement만 바꾸는가?
-7. Projection이 source에 없는 집계·closure·설명 정보를 포함할 때 각 값의 direct/derived
-   지위와 provenance를 어떻게 노출할 것인가?
+7. Projection이 source를 재배열·집계한 설명 정보를 포함할 때 backing Source Knowledge Object와
+   재구성 조건을 어떻게 노출할 것인가?
 8. stale하거나 permission-filtered Projection의 “없음”을 source에 assertion이 없다는 뜻으로
    해석하지 못하게 하려면 어떤 contract가 필요한가?
 
@@ -1547,13 +1568,13 @@ Ontology의 층위는 대상의 기능과 지위를 구별하기 위해 사용�
 | Core Ontology | L.W.S. 자체가 동작하기 위해 요구하는 built-in term, canonical profile과 공통 constraint |
 | Domain Ontology | `type.service`처럼 특정 지식 domain에서 사용하는 구체 term과 domain constraint |
 | Instance Graph | `svc.caddy` 같은 지식 대상과 실제 관계 assertion |
-| Derived Layer | source와 ontology 규칙으로 계산한 index, projection, closure, inference와 validation result |
+| Rebuildable Layer | Source Knowledge Object로부터 재구성한 index, projection과 validation result. semantic derived assertion과 inference는 최초 Canonical에 포함하지 않는다. |
 
 `Ontology graph`는 위 표의 단일 행과 같은 별도 추상 수준이라기보다, Meta-ontology, Core
 Ontology와 Domain Ontology의 term·Definition·Axiom 및 그 관계를 Knowledge Object로 표현한
 graph라는 후보 정의를 둔다. 이 경우 `Domain Ontology`는 ontology graph 안의 domain별
 vocabulary/profile이고, `Instance Graph`는 그 term을 사용해 실제 지식 대상과 assertion을
-표현하는 graph다. `Derived Layer`는 두 graph와 규칙에서 계산되는 view이며 자동으로 canonical
+표현하는 graph다. `Rebuildable Layer`는 두 graph와 규칙에서 계산되는 view이며 자동으로 canonical
 graph가 되지 않는다.
 
 Meta-ontology와 Core Ontology는 서로 관련되지만 관점이 다르다. Meta-ontology는 “Type이라는
@@ -1600,59 +1621,625 @@ contract다. Core와 Domain의 materialization 대상, bootstrap 순서와 virtu
 7. Domain Ontology가 Core rule을 확장·좁힘·대체할 수 있는 범위와 충돌 우선순위는 무엇인가?
 8. 한 instance에 여러 Domain Ontology 또는 profile이 동시에 적용될 수 있는가? 적용 context는
    source에 명시하는가, query scope에서 정하는가?
-9. Derived Layer의 결과를 graph 탐색에 포함할 때 direct edge와 inferred edge를 동일한 API에서
-   반환할 것인가, provenance가 드러나는 별도 view로 반환할 것인가?
+9. Rebuildable Layer의 source 기반 index·projection을 graph 탐색 API에서 어떤 별도 지위로
+   반환할 것인가? semantic inferred edge를 제공하는 문제는 단계 19로 이관한다.
 10. 각 층위의 materialization 여부는 의미적 소속과 독립적인가? virtual Core term과 materialized
     Domain term이 함께 있을 때 동일한 resolution 규칙을 사용할 수 있는가?
 
 <a id="stage-1-source-derived"></a>
-### 1.9 Canonical source와 derived artifact
+### 1.9 Source Knowledge Object와 rebuildable artifact
 
-**Proposal**
+**Decision**
 
-Knowledge Object의 first-class 지위와 index·projection·closure의 source 지위를 구분한다.
-어떤 index row가 Node나 Edge를 설명하거나 object ID를 포함한다는 이유만으로 그 row 자체가
-새로운 Knowledge Object 또는 canonical 지식 assertion이 되지는 않는다.
+#### 1.9의 목적과 적용 범위
+
+이 절은 Source Knowledge Object와 이를 읽기 위해 생성하는 통합 read model의 지위를 구분한다.
+첫 Canonical에서 확정할 대상은 다음과 같다.
+
+1. JSON/file에 저장되는 Source Knowledge Object의 source 권위
+2. Rebuildable Artifact의 목적과 Knowledge Object가 아닌 지위
+3. 하나의 활성 Read Model Provider가 담당하는 Rebuildable Artifact의 생성·갱신·저장·조회 경계
+4. artifact record와 Source Knowledge Object 사이의 추적 가능성
+5. permission-aware read와 rebuild·freshness가 지켜야 할 최소 원칙
+
+이 절은 Provider가 보장할 논리적 read model의 기본 경계만 정한다. Provider와 독립적인 논리적
+저장 구조와 조회 contract는 단계 12·13에서 Table 후보를 포함하여 설계하고, 선택한 DBMS의
+구체적인 물리 DB schema와 migration은 단계 18에서 확정한다. Query plan, transaction isolation과
+driver interface 같은 세부 구현도 해당 후속 단계에서 필요한 범위만 다룬다.
+
+#### 핵심 개념
+
+`Source Knowledge Object`는 L.W.S.의 canonical Knowledge Object grammar에 따라 Node 또는
+Edge로 정형화되어 JSON/file에 저장된 Knowledge Object다. 첫 Canonical에서는 JSON/file에
+마지막으로 성공적으로 commit된 Source Knowledge Object의 내용이 해당 object를 읽고 해석하는
+권위 기준이며, Source Edge에 기록된 관계 assertion이 관계 해석의 source 권위를 가진다. 문서에서 사용하는
+`canonical source`는 별도 object, Type, status 또는 authority 계층을 뜻하지 않고, source가
+Knowledge Object 형식으로 정형화되었다는 점을 강조하는 보조 표현이다. 본문에서는 더 직관적인
+`Source Knowledge Object`를 주 용어로 사용한다.
+
+`최소 구조 무결성`은 입력 record가 합의된 저장 형식에 따라 읽힐 수 있고, 유일한 canonical ID,
+`object_kind`, 공통 필수 key와 Node/Edge별 최소 구조를 갖추어 Knowledge Object로 식별·저장·주소
+지정할 수 있는 상태를 뜻한다. 이 admission validation을 통과하고 승인된 저장 절차가 원자적으로
+commit되어야 Source Knowledge Object가 성립한다. 최소 구조를 해석할 수 없는 record는 Source
+Knowledge Object가 아니라 corrupt storage record로 다룬다.
+
+`Semantic validity`는 적용 ontology·profile 및 각 Constraint에 명시된 적용 조건에 따라 해당
+Knowledge Object에 적용되는 Semantic Constraint를 평가했을 때, validity에 영향을 주는 모든 필수
+의미 규칙을 충족하는지를 나타내는 검증 결과다. reference가 올바른 identity와 role을 가리키는지,
+Type·Relation Type의 endpoint·cardinality·value 규칙을 만족하는지와 같은 의미 검사가 여기에
+포함될 수 있다. 단순히 JSON 구조를 읽을 수 있다는 사실이나 semantic validation을 아직 실행하지
+않았다는 사실은 semantic validity를 보증하지 않는다. 어떤 issue가 validity를 무효화하는지와
+미평가·invalid source의 보존·격리·실행 참여 정책은 단계 9에서 정한다. Semantic validity는 검증
+결과이며, Source Knowledge Object의 `props`나 별도 영속 record에 반드시 기록해야 하는 값은 아니다.
+결과의 일시 반환, 보존, cache와 audit 필요 여부도 단계 9에서 정한다.
+
+최소 구조 무결성과 semantic validity는 서로 다른 검증 축이다. 모든 Source Knowledge Object
+후보는 Bootstrap Kernel의 최소 구조 admission validation을 통과해야 한다. 일반 Knowledge Object는
+현재 활성 Runtime Rule Set에서 commit-blocking으로 분류된 적용 가능한 Semantic Constraint도 source
+commit 전에 평가한다. 검사에 실패하면 commit하지 않는다.
+
+`type.package`와 `type.rule` 작성 후보는 ontology 규칙을 작성·교체하기 위한 Source이므로 일반
+Knowledge Object의 commit-blocking Runtime Rule Set 검사에 예외를 둔다. 이 후보는 최소 구조
+무결성과 ontology 작성 권한을 충족하면 Source로 commit할 수 있다. Source 지위만으로 실행 가능성이나
+semantic validity가 보증되지는 않으며, 관리자가 활성화를 요청할 때 현재 후보를 다시 읽어
+compile·검증한다. 모든 Rule의 검증에 성공한 후보만 활성화할 수 있고, 실패한 후보 Source는
+보존하며 기존 Runtime Rule Set을 유지한다.
+
+일반 Knowledge Object의 commit 성공은 그 시점의 활성 규칙에서 commit-blocking 검사를 통과하고,
+Source 변경과 그에 대응하는 Rebuildable Artifact 변경이 하나의 논리적 canonical mutation으로
+완료되었음을 뜻한다. 이는 이후 ontology·Constraint 변경에 대한 semantic validity까지 영구적으로
+보증한다는 뜻은 아니다.
 
 ```text
-canonical Node/Edge와 승인된 ontology 규칙
-                  │
-                  └─ 계산 ─> index / projection / closure / validation result
+입력 Knowledge Object 후보
+        │
+        ▼
+Bootstrap Kernel의 최소 구조 admission validation
+        ├─ 실패 ─> Source commit 거부 / corrupt record 처리
+        └─ 성공
+             │
+             ├─ 일반 Knowledge Object
+             │      └─ 활성 Runtime Rule Set의 commit-blocking Constraint 평가
+             │             ├─ 실패 ─> canonical mutation 거부
+             │             └─ 성공 ─> 변경안 준비로 진행
+             │
+             └─ type.package / type.rule 작성 후보
+                    └─ ontology 작성 권한 확인
+                           ├─ 실패 ─> canonical mutation 거부
+                           └─ 성공 ─> 변경안 준비로 진행
+
+             적용되는 검사 경로의 성공
+                             │
+                             ▼
+             Source 변경안과 Artifact 변경안 준비
+                             │
+                  ┌──────────┴──────────┐
+                  │                     │
+                실패                  모두 성공
+                  │                     │
+                  ▼                     ▼
+       이전의 일관된 상태 유지    하나의 논리적 canonical
+                                   mutation으로 함께 공개
+                                             │
+                                             └─ package / rule 후보이면
+                                                관리자 활성화 요청에서
+                                                별도 compile·검증
 ```
 
-Derived artifact는 자신을 만든 canonical source와 규칙에서 결정적으로 다시 계산할 수 있어야
-한다는 방향을 기준안으로 둔다. 삭제한 뒤 source-only rebuild로 복구할 수 없는 정보가 derived
-layer에만 존재한다면, 그것이 실제 source여야 하는지 또는 source 손실인지 재검토해야 한다.
+`Rebuildable Artifact`는 L.W.S.가 Source Knowledge Object를 반복적으로 직접 scan하지 않고
+식별·검색·필터링하며 object 간 관계를 탐색할 수 있도록 생성하는 통합된 비권위적 read model이다.
+이는 독립적인 Knowledge Object identity나 source 권위를 갖지 않으며, JSON/file Source Knowledge
+Object와 승인된 projection 규칙으로 완전히 재생성할 수 있어야 한다.
 
-`durable` 또는 `virtual`은 이 구분에서 object를 직접 다루는지 여부를 뜻하지 않는다. 이는
-앞서 설명한 source 지위 후보이며, 다음을 서로 혼동해서는 안 된다.
+`Projection`은 Source Knowledge Object의 필요한 정보를 Rebuildable Artifact의 조회 표현으로
+변환하는 규칙과 과정이다. `Reindex`는 Source Knowledge Object 공간을 다시 읽어 artifact 전체를
+재생성하는 절차다. `Incremental projection update`는 새로 생성·변경·삭제된 source mutation의
+영향을 받은 projection만 추가·갱신·제거하고 영향받지 않은 record는 유지하는 최적화다. 동일한
+Source Knowledge Object 상태와 projection contract에 대한 성공한 incremental projection update와
+full reindex의 관찰 가능한 결과는 같아야 한다.
 
-| 대상 | 현재 논의상 지위 후보 |
+`Read Model Provider`는 승인된 projection contract에 따라 Source Knowledge Object를 투영하고,
+Rebuildable Artifact의 최초 생성, full reindex, incremental projection update, 저장, freshness
+관리와 조회를 모두 담당하는 활성 DB 구현 경계다. Projector, Reindexer, Artifact Store 또는 Query
+Adapter 같은 내부 module로 나눌 수 있지만 이러한 분리는 구현 선택이며 Specification이 독립
+component로 강제하지 않는다.
+
+첫 Canonical은 하나의 Source Knowledge Object 공간에 하나의 활성 Read Model Provider만 사용한다.
+현재 구현은 SQLite를 사용하지만 DB 기술과 구체적인 물리 DB schema는 canonical semantic
+grammar가 아니다. 이는 Table 구조가 논의 대상이 아니라는 뜻이 아니다. 다른 DBMS에서도 동일하게
+보장해야 하는 record 구분, key 대응, Join과 조회 능력은 논리적 Read Model contract이고, 이를
+table·column·datatype·index·constraint로 구현하는 방식이 물리 DB schema다. 다른 DBMS는 서로 다른
+물리 schema로 같은 논리 contract를 구현할 수 있다.
+
+논리적 구조는 단계 12의 materialization·artifact lifecycle과 단계 13의 projection·query 논의에서
+설계한다. 그 결과를 SQLite 같은 선택 DBMS의 실제 DDL, index, migration과 release 절차로 확정하는
+책임은 단계 18에 둔다. 복수 Provider의 동시 활성화와 분산 동기화는 최초 범위에 포함하지 않는다.
+Provider는 projection contract를 집행하지만 그 의미를 임의로 변경하거나 Source Knowledge Object의
+저장·mutation 및 source 권위를 담당하지 않는다.
+
+#### Source Knowledge Object 영역, Read Model Provider와 통합 관리 경계
+
+첫 Canonical의 구현 책임은 Source Knowledge Object를 저장하고 읽는 영역과 Rebuildable Artifact를
+관리하는 Read Model Provider 영역으로 나눌 수 있다. 그 위의 통합 시스템은 두 영역을 하나의
+canonical mutation과 recovery 경계로 조정한다. 이는 새로운 Knowledge Object 종류나 source authority
+계층을 추가한다는 뜻이 아니다.
+
+```text
+통합 시스템
+├─ canonical mutation의 논리적 commit과 공개를 조정
+├─ Source와 Artifact 중 한쪽만 반영된 상태의 정상 노출을 차단
+├─ 완료 여부가 불확실한 transaction의 recovery를 선행
+│
+├─ Source Knowledge Object 영역
+│  ├─ 최소 구조·권한·commit-blocking Constraint 검사
+│  ├─ JSON/file Source 변경의 준비·commit·복구
+│  └─ Object Reader를 통한 Source Knowledge Object 읽기
+│
+└─ Read Model Provider
+   ├─ incremental projection update와 full reindex
+   ├─ Rebuildable Artifact 저장과 무결성 관리
+   └─ artifact-backed query
+```
+
+통합 시스템은 DBMS가 table 변경과 그 index 변경을 하나의 transaction으로 관리하는 것과 같은
+논리적 보증을 제공하는 방향으로 둔다. Index가 재생성 가능하더라도 정상 transaction에서 table만
+변경되고 index가 갱신되지 않은 상태를 공개하지 않는 것처럼, Rebuildable Artifact가 재생성
+가능하다는 이유만으로 정상 mutation에서 Source와의 불일치를 허용하지 않는다. 다만 JSON/file과
+DBMS는 서로 다른 물리 저장소이므로 하나의 물리 DB transaction을 공유한다고 전제하지 않는다.
+각 영역의 준비·commit·복구를 조정하는 구체적인 절차는 단계 12에서 정한다.
+
+위 구분은 논리적 책임 영역이며 별도 process, service 또는 class 구성을 강제하지 않는다. 특히
+통합 관리를 위해 Read Model Provider가 Source Knowledge Object의 source 권위나 저장 책임까지
+가지는 것으로 확장하지 않는다.
+
+```text
+단계 6·11
+Relation·permission 의미 요구
+        │
+        ▼
+단계 12·13
+Provider-neutral 논리 구조·Table 후보·조회 contract
+        │
+        ▼
+단계 18
+선택 DBMS의 물리 schema·migration·release
+```
+
+```mermaid
+flowchart LR
+    S["JSON/file<br/>Source Knowledge Object"]
+    C["Approved<br/>Projection Contract"]
+    P["Single Active Read Model Provider<br/>project · reindex · incremental update<br/>store · freshness · query"]
+    A["Rebuildable Artifact<br/>통합 read model"]
+    Q["Object / Relation / Permission-aware Query"]
+    R["Object Reader<br/>전체 Source Object 읽기"]
+
+    C -->|규칙 제공| P
+    S -->|source 입력| P
+    P -->|생성·갱신·저장| A
+    A -->|조회| P
+    Q -->|탐색 요청| P
+    P -->|요약·canonical ID 반환| Q
+    Q -->|전체 object 필요| R
+    R --> S
+```
+
+위 그림은 논리적 책임을 나타내며 module 호출 순서나 DB 배치를 강제하지 않는다. Read Model
+Provider는 Rebuildable Artifact의 전체 lifecycle을 담당한다. Query가 Provider를 통해 artifact의
+요약 정보만 반환할 수도 있고, 반환된 canonical ID를 이용해 Object Reader가 전체 Source Knowledge
+Object를 읽을 수도 있다.
+
+#### Rebuildable Artifact의 통합 범위
+
+Rebuildable Artifact는 하나의 통합 read model이며 다음 논리적 영역을 포함할 수 있다.
+
+```text
+Rebuildable Artifact
+├─ Object Index
+│  └─ object 식별·종류·상태·기본 검색과 filtering
+├─ Relation Index
+│  └─ explicit Source Edge의 방향·Relation Type과 endpoint 탐색
+├─ Search / Navigation Projection
+│  └─ list, search, adjacency와 backlink
+├─ Permission-aware Query 기반
+│  └─ 직접 permission graph를 Join하기 위한 object·relation 표현
+└─ Artifact Metadata
+   └─ schema/profile compatibility, build 완료와 Source 대응을 검증하기 위한 정보
+```
+
+Artifact Metadata는 Rebuildable Artifact 자체의 구조와 build를 해석하고 Source 및 적용 projection
+contract와의 대응을 검증하기 위한 비권위적 정보다. `ready`, `stale`, `corrupt`와 `not-ready`는
+Rebuildable Artifact의 구성 요소나 metadata의 고정 값으로 전제하지 않고, 뒤의 운영 상태 판정에
+따라 통합 시스템이 결정한다. Transaction 중간 상태와 recovery 정보도 Rebuildable Artifact의
+구성 요소에 포함하지 않는다.
+
+Source backup·restore는 Rebuildable Artifact의 구성 요소가 아니라 Source Knowledge Object의
+복구를 보장하는 운영 요건으로 단계 18에 이관한다. Replica는 최초 Canonical에서 제외하고 가용성
+또는 분산 구성이 필요해질 때 단계 19에서 확장한다. 일반 runtime cache도 최초 Rebuildable
+Artifact 범위에 포함하지 않고, 구현에 중요하게 필요하다고 확인되면 단계 18에서 freshness·보안과
+무효화 조건을 검토하여 확장한다. Validation report는 validation 판정의 근거와 issue를 설명하는
+결과이므로 단계 9에서 역할과 보존 여부를 정한다. 편집 buffer, transaction 중간 상태와 recovery
+record의 source 지위는 단계 2·12에서 별도로 정한다.
+
+Object Index의 최소 조회 축은 canonical ID와 `object_kind`, `type`, `status`, `visibility`를
+기준안으로 둔다. 이 값들의 권위는 Source Knowledge Object에 있고 artifact의 값은 탐색용
+projection이다. Artifact record는 Knowledge Object가 아니므로 자체 `rev`를 갖지 않으며, Source
+Knowledge Object의 `rev`를 record마다 복제하는 것을 최소 contract로 요구하지 않는다. 특정 조회를
+위해 Source의 `rev`를 선택적으로 복제할지는 물리 DB 설계에서 정할 수 있지만, 그 값은 Source의
+권위를 대신하거나 Artifact의 일치 여부를 판정하는 기준이 되지 않는다.
+
+Edge도 Knowledge Object이므로 Edge의 `status`와 `visibility`는 공통 Object Index에 투영한다.
+Relation Index는 `edge_id`로 해당 Edge의 Object Index record와 Join하여 이를 조회한다. Relation
+Index에 같은 값을 중복 저장하는 것은 최소 contract가 아니며, 성능을 위해 복제할지는 물리 DB
+설계에서 정한다. 일반 관계 조회는 Edge 자체와 source·target endpoint 각각의 노출 가능성을
+구분해야 하며, 내부 Permission evaluator가 permission effect를 계산하기 위해 관계를 읽는 것과
+사용자에게 해당 Edge를 노출하는 것은 같은 판정이 아니다.
+
+Relation Index의 최소 조회 능력은 Edge ID, source endpoint, target endpoint와 Relation Type을
+기준으로 직접 Source Edge를 찾는 것이다. 첫 Canonical에서는 explicit Source Edge만 Relation
+Index에 투영하고 `props` 내부의 object ID나 reference는 관계 index로 만들지 않는다. 따라서
+탐색 가능한 관계가 필요하면 explicit Edge로 기록해야 한다. Field-encoded reference를 향후
+관계 index에 포함하는 기준은 단계 6으로 이관한다.
+
+#### Relation Index와 Source Edge의 대응
+
+직접 Relation Index record의 `edge_id`는 투영한 Source Edge의 canonical `id`와 동일하다.
+`edge_id`는 artifact record에 새로운 Knowledge Object identity를 부여하는 값이 아니라 source
+추적, 직접 조회와 projection 갱신을 위한 복제 key다. 따라서 Source Edge를 추적하기 위한 별도의
+key를 중복해서 요구하지 않는다.
+
+```text
+Source Edge Knowledge Object
+├─ id:     edge.authorship.1
+├─ source: book.a
+├─ target: person.b
+└─ type:   rel.authored_by
+                │
+                │ projection
+                ▼
+Relation Index Record
+├─ edge_id:       edge.authorship.1  ── Source Edge canonical ID
+├─ source_id:     book.a             ── 관계의 출발 endpoint
+├─ target_id:     person.b           ── 관계의 도착 endpoint
+└─ relation_type: rel.authored_by
+```
+
+Source Edge 자체의 mutation은 `edge_id`로 직접 projection record를 찾는다. Endpoint object의
+변경 영향은 `source_id`·`target_id`, Relation Type의 변경 영향은 `relation_type` 조회 능력으로
+찾을 수 있다. 이러한 lookup은 직접 Edge projection의 영향 식별이며, semantic inference dependency
+graph를 도입한다는 뜻이 아니다.
+
+Knowledge Object 공통 index와 관계 assertion index는 논리적으로 분리하고 Edge ID로 Join하는
+방향을 기준안으로 둔다. 다음 이름은 설명용이며 실제 table명이나 column을 승인하지 않는다.
+
+```mermaid
+flowchart LR
+    KO["Knowledge Object Index<br/>id · object_kind · type<br/>status · visibility"]
+    RA["Relation Assertion Index<br/>edge_id · source_id<br/>target_id · relation_type"]
+
+    RA -->|"edge_id = Knowledge Object id"| KO
+    RA -->|source_id| KO
+    RA -->|target_id| KO
+```
+
+Relation Assertion Index에 `object_kind`를 반복 저장할지는 DB 설계 사항이다. 공통 Object Index와
+Join하여 해당 `edge_id`가 Edge인지 확인할 수 있다면 논리 contract는 충족한다.
+
+#### Visibility와 permission
+
+`Visibility`는 Knowledge Object 자체에 기록된 기본 노출 정책이다. `Permission`은 특정 principal이
+특정 capability를 target 또는 scope에 행사할 수 있는지를 판단하는 규칙과 결과다. Visibility는
+permission 판정의 입력일 수 있지만 public/private 노출과 read/update/delete/manage 권한은 같은
+축이 아니다.
+
+`Permission assertion`은 `member_of`, `owns`, `can_read`, `can_update`, `can_*_in`과 같이 permission을
+직접 구성하거나 전달하는 Source Edge다. 실제로 permission effect를 갖는 Relation Type의 canonical
+목록과 Group·containment 관계의 적용 범위는 단계 11에서 정한다. Relation Type Term 자체는 Node이고,
+실제 permission assertion은 해당 Relation Type Term을 `type`으로 사용하는 Edge다.
+
+`Effective Permission`은 visibility, 직접 permission assertion, ownership, Group membership,
+scope 관계, account 상태와 request context를 함께 평가한 최종 권한 판정이다. 첫 Canonical에서는
+이를 독립 record나 새로운 Knowledge Object로 materialize하지 않고, Rebuildable Artifact에 투영된
+직접 object·relation 정보를 permission query에서 Join하여 계산하는 방향을 기준안으로 둔다.
+
+```mermaid
+flowchart LR
+    A["account.a"] -->|"member_of<br/>Source Edge"| G["group.team"]
+    G -->|"can_read<br/>Source Edge"| O["node.private"]
+    V["node.private.visibility"] --> E["Effective Permission<br/>query result"]
+    A --> E
+    G --> E
+    O --> E
+```
+
+Permission evaluator는 현재 사용자의 visibility로 먼저 잘라낸 graph가 아니라 권한 판정에 필요한
+내부 permission relation을 평가해야 한다. Edge 자체의 노출 여부와 그 Edge의 permission effect를
+혼합하지 않는다. Effective permission은 결과 count·ordering·pagination 전에 적용해야 하며,
+permission 판정에 필요한 artifact가 stale·corrupt하거나 준비되지 않았다면 private
+read/write/manage를 fail-closed하는 방향을 둔다.
+
+현행 SQLite 구현은 `account_groups`, `object_owners`, `object_scope_memberships`와
+`account_permissions` 같은 effective permission 보조 projection을 materialize한다. Query-time Join
+기준안을 채택하면 이는 Target과의 `Implementation Gap`이며, 이 문서의 변경만으로 현행 구현의
+삭제나 migration을 승인하지 않는다.
+
+#### 권한 관련 의미의 불변성 Axiom 후보
+
+`Authorization-effective content`는 permission 판정 결과를 바꿀 수 있는 identity, endpoint,
+Relation Type, scope, effect 또는 condition이다. 권한 판정에 참여하는 Knowledge Object의
+모든 field가 여기에 해당하는 것은 아니며, 자연어 Definition과 표시용 title처럼 실행 결과에
+영향을 주지 않는 metadata는 구분할 수 있다.
+
+다음 의미 원칙을 Axiom 후보로 둔다.
+
+> Permission을 구성하거나 전달하는 assertion의 authorization-effective content는 최초 생성 후
+> 같은 Knowledge Object identity 안에서 변경할 수 없다. 권한 관계의 변경은 기존 assertion의
+> 승인된 철회·삭제와 새로운 assertion의 생성으로 표현한다.
+
+이에 따라 permission assertion의 `source`, `type`, `target`과 permission 판정 결과에 영향을 주는
+`scope`, `effect`, `condition`은 in-place 변경하지 않는다. Core permission Relation Type Term의
+identity와 permission 의미도 read-only로 보호한다.
+다만 account·Group·scope Node 전체를 불변으로 만들지는 않으며, lifecycle transition, 철회와
+삭제의 정확한 표현 및 설명용 metadata 수정 범위는 단계 8과 단계 11에서 확정한다.
+
+Axiom은 실행되지 않는 의미 명제이므로 실제 mutation 차단은 해당 Axiom을 operationalize하는
+Constraint가 담당해야 한다. 어떤 Relation Type이 permission-bearing인지, 생성·철회 권한과
+Constraint operator·operand를 어떻게 표현할지도 단계 8·11에서 정한다.
+
+#### Rebuild와 freshness
+
+Rebuildability는 첫 Canonical이 JSON/file Source Knowledge Object를 필수 물리 source로 사용하는
+데서 파생되는 필수 성질이다. Artifact를 삭제하거나 DB 제품을 교체해도 source와 승인된 projection
+규칙만으로 같은 관찰 가능한 object·relation 탐색 결과를 다시 만들 수 있어야 한다.
+
+정상 mutation에서는 Source 변경과 incremental projection update를 하나의 논리적 canonical
+mutation으로 처리한다. 양쪽이 모두 성공하여 commit이 확정된 뒤에만 함께 정상 조회에 공개한다.
+commit이 확정되기 전에 어느 한쪽이 실패하면 새 변경을 공개하지 않고 이전의 일관된 Source와
+Artifact를 유지한다. 따라서 incremental projection update 실패를 정상적으로 commit된 Source와
+`stale` Artifact를 만드는 일상적인 결과로 사용하지 않는다.
+
+JSON/file Source Store와 DBMS가 하나의 물리 transaction을 공유하지 못하더라도, 정상 L.W.S.
+read·query·mutation 경로에서는 한쪽만 반영된 상태를 관찰할 수 없어야 한다. 이를 위해 필요한
+Source 변경안, DB transaction, recovery marker 또는 journal, 공개 차단과 재시도 순서는 단계 12에서
+구체화한다. 이러한 transaction·recovery 정보는 그 자체로 Log Knowledge Object나 Source Knowledge
+Object가 아니라 저장 transaction을 복구하기 위한 내부 운영 정보로 보는 방향을 둔다.
+
+crash나 I/O failure로 canonical mutation의 완료 여부를 확정할 수 없으면 정상 서비스를 재개하기
+전에 양쪽 commit을 완료하거나 이전의 일관된 상태로 복구한다. 이미 논리적 commit이 완료된 뒤
+Artifact가 손상·유실되거나 Source와의 불일치가 발견된 경우에는 commit된 Source Knowledge Object의
+권위를 Artifact 때문에 취소하지 않고 Artifact를 정상 조회에서 제외한 뒤 rebuild한다.
+
+Full reindex의 중간 결과도 정상 Artifact로 노출하지 않는다. 사용할 수 있는 이전의 일관된
+Artifact가 있으면 새 build를 준비하는 동안 계속 사용하고, 새 build가 완전히 생성·검증된 뒤에만
+교체한다. 사용할 이전 Artifact가 없으면 rebuild와 recovery가 완료될 때까지 정상 artifact-backed
+query를 제공하지 않는다. 정확한 atomic activation, schema/profile compatibility와 recovery는 단계
+12에서, full/incremental 동등성 검증은 단계 17에서 확정한다.
+
+```text
+이전의 일관된 Source + Artifact
+               │
+               ▼
+Source 변경안 + incremental projection update 준비
+               │
+       ┌───────┴────────┐
+       │                │
+     실패             모두 성공
+       │                │
+       ▼                ▼
+이전 상태 유지      함께 commit·공개
+
+commit 결과 불명확 ─> 정상 서비스 중단 ─> 완료 또는 이전 상태 복구
+commit 이후 Artifact 손상·불일치 ─> 정상 조회 제외 ─> full reindex
+```
+
+#### Artifact 운영 상태와 판정
+
+`ready`, `stale`, `corrupt`와 `not-ready`는 Knowledge Object의 lifecycle `status`가 아니다. 이들은
+통합 시스템이 transaction과 recovery의 결과, Source Knowledge Object와 Artifact의 일치 여부 및
+Artifact 자체의 무결성을 바탕으로 판정하는 운영 상태다. 특정 key를 모든 Knowledge Object나
+artifact record에 추가하도록 요구하지 않으며, 상태를 보존할 metadata와 검사 절차는 단계 12에서
+정한다.
+
+상태는 다음 순서와 기준으로 구분하는 방향을 둔다.
+
+```text
+정상 조회에 사용할 활성 Artifact가 없거나 recovery가 완료되지 않음
+└─ not-ready
+
+활성 대상으로 관리하던 Artifact를 읽을 수 없거나 내부 무결성 검사 실패
+└─ corrupt
+
+Artifact 자체는 읽을 수 있으나 현재 Source 또는 적용 projection contract와
+일치하지 않거나 그 일치를 보증할 수 없음
+└─ stale
+
+정상 canonical mutation·rebuild 또는 recovery가 완료되고,
+Artifact의 무결성과 Source·projection contract와의 일치가 확인됨
+└─ ready
+```
+
+`ready`는 기본값이나 추정으로 부여하지 않고 위 조건이 확인된 경우에만 성립한다. 이는 모든 Source
+Knowledge Object의 semantic validity를 영구적으로 보증한다는 뜻이 아니라, 활성 Artifact를 현재
+Source에 대응하는 정상 read model로 사용할 수 있다는 뜻이다. 매 query마다 Source 전체와 Artifact
+전체를 비교할 필요는 없으며, 마지막으로 성공한 canonical mutation·rebuild 또는 recovery의 결과를
+사용하다가 그 전제를 바꾸는 mutation, projection contract 변경, startup recovery, I/O 오류나 외부
+Source 변경이 감지되면 다시 판정한다.
+
+정상 incremental projection update 실패는 이전의 일관된 `ready` 상태를 유지하므로 그 자체로
+`stale` 전환을 일으키지 않는다. `stale`은 정상 transaction 밖의 Source 변경, 과거 구현·migration의
+불일치 또는 recovery 검사에서 누락이 확인된 예외 상태로 제한한다. `stale`, `corrupt` 또는
+`not-ready` 상태의 Artifact는 정상 artifact-backed query에 사용하지 않는다. 외부의 직접 JSON/file
+수정은 정상 canonical mutation으로 자동 인정하지 않으며, 감지·격리·import·migration과 recovery의
+구체적인 정책은 단계 2·12·14·18에서 정한다.
+
+#### 최초 Canonical의 derived 경계
+
+최초 Canonical은 derived assertion을 생성하지 않는다. 따라서 source에 없는 새 관계 의미를
+inverse·symmetric·transitive·relation composition 또는 일반 inference로 계산하여 projection에
+추가하지 않는다. 최초 Canonical의 index와 projection은 Source Knowledge Object에 이미 기록된
+정보를 탐색·조회 목적에 맞게 재배열하거나 요약한 재구성 가능한 artifact다.
+
+```text
+Source Node / Source Edge
+          │
+          ├─ 재배열·색인 ─> object / relation / search index
+          └─ 탐색 view   ─> adjacency / backlink / source-based projection
+
+새 semantic relation을 계산하는 reasoning ──> 최초 Canonical 범위 밖, 단계 19
+```
+
+Index 또는 projection이 Source Edge의 `source`, `target`과 Relation Type을 나타내더라도 그 결과가
+새 Edge나 별도의 assertion이 되는 것은 아니다. source에 없는 semantic assertion을 계산하는
+derived assertion, 자동 inference, 그 결과의 provenance·freshness·중복 억제와 Source Edge 생성
+보조 기능은 서로 분리해 선결하지 않고 단계 19의 reasoning 기능으로 함께 정의한다.
+
+#### 단일 source와 읽기 구조
+
+최초 Canonical에서는 하나의 canonical ID에 하나의 Source Knowledge Object만 허용한다. 별도의
+source authority 상태, provider 우선순위 또는 Source Resolver를 두지 않는다. Source Store에서
+같은 canonical ID를 주장하는 JSON/file 표현이 둘 이상 발견되면 충돌로 처리하고 어느 것도
+자동으로 선택하지 않는다. Projection과 Rebuildable Artifact는 별도의 논리적 source가 아니다. Source
+backup·restore, replica와 일반 runtime cache는 활성 source 선택에 참여시키지 않고 앞서 정한
+후속 단계에서 각각의 운영·확장 지위를 구체화한다.
+
+정상 탐색·목록·관계 조회는 전체 source를 scan하지 않고 Read Model Provider가 관리하는
+Rebuildable Artifact를 사용한다. Provider는 탐색 결과의 요약 정보와 canonical ID를 반환하며,
+전체 Knowledge Object가 필요하면 Object Reader가 그 canonical ID에 해당하는 Source Knowledge
+Object를 Source Store에서 읽는다. canonical ID를 물리적 저장 위치로 해석하는 일은 Source Store와
+Object Reader의 저장·읽기 책임이며, 별도의 source, 의미 권위 또는 독립된 Rebuildable Artifact를
+전제하지 않는다. 구체적인 저장 위치 해석과 integrity 검사·recovery 절차는 단계 12에서 확정한다.
+
+```text
+탐색·목록·관계 조회
+    ↓
+Read Model Provider / Rebuildable Artifact
+  요약 정보와 canonical ID를 반환
+    ↓ 전체 Knowledge Object가 필요한 경우
+Object Reader
+  Source Store에서 Source Knowledge Object를 읽고 구조를 반환
+```
+
+`status`는 Source Knowledge Object 여부나 읽기 우선순위를 나타내지 않는다. `status`는 1.5에서
+정한 lifecycle key다. deprecated 또는 retired 상태의 Knowledge Object도 보존된 source일 수 있고,
+fresh한 index나 projection도 rebuildable artifact이므로 source가 아니다.
+
+Bootstrap Kernel code와 materialized bootstrap Node를 두 개의 definition이나 복수의 물리적
+Knowledge Object 표현으로 취급하지 않는다. Kernel code는 bootstrap 동작을 구현하고,
+materialized bootstrap Node가 해당 bootstrap identity의 유일한 Knowledge Object이자 사람이 읽는
+자연어 Definition이다. Kernel code는 Source Knowledge Object 후보가 아니다. Node 설명과 실제
+Kernel 동작의 불일치는 identity collision이나 source 우선순위 문제가 아니라
+documentation/materialization drift다. Runtime은
+Kernel code를 실행하고 drift를 보고하며, 승인된 system materializer가 Node를 복구한다. 정확한
+materialization과 drift 검사 contract는 단계 2와 단계 12에서 확정한다.
+
+#### 시간순 누적 대상을 위한 `Nodes` 형식 후보
+
+현실이나 domain에서 발생한 사건에 관한 지식은 1.5에 따라 일반 Node이며 별도의 Event object
+kind를 요구하지 않는다. Log, history와 event처럼 시간 순으로 쌓이는 여러 기록을 하나의
+Knowledge Object로 다루기 위한 Node 형식의 후보 명칭은 `Nodes`로 둔다.
+
+`Nodes`가 하나의 Node인지, 여러 하위 기록의 collection인지, 각 entry가 독립 identity를 갖는지,
+어떤 Type contract를 사용하는지와 JSONL을 포함한 물리 표현은 아직 확정하지 않는다. append,
+status, patch, journal, compaction과 recovery 규칙도 단계 2와 단계 12로 이관한다. 따라서 1.9에서는
+`Nodes`를 Source Knowledge Object의 확정 형식이나 제3의 object kind로 승인하지 않는다.
+
+#### 폐기하는 source 분류
+
+`durable source`와 `virtual source`는 Knowledge Object의 종류나 필수 성질로 사용하지 않는다.
+저장 방식이나 materialization 상태를 별도의 source 분류로 만들지 않고, Source Knowledge Object와
+rebuildable artifact의 구분으로 단순화한다. bootstrap identity도 최종적으로 materialized read-only
+Node Knowledge Object로 표현하며, Kernel code를 virtual source로 분류하지 않는다.
+
+현재의 기본 지위는 다음과 같다.
+
+| 대상 | 기본 지위 |
 | --- | --- |
-| 저장된 canonical Node/Edge JSON | source-backed Knowledge Object |
-| 명시적으로 선언된 virtual term | 단계 2에서 정할 조건을 만족할 때만 canonical reference 또는 Knowledge Object 후보 |
-| index/projection row | 자동으로 Knowledge Object가 되지 않는 derived artifact |
-| 계산된 closure 또는 inference | 명시적 승격·materialization 규칙이 없는 한 canonical source assertion이 아님 |
+| canonical grammar로 저장된 Node/Edge | Source Knowledge Object |
+| materialized read-only bootstrap Node | Source Knowledge Object |
+| index/projection 결과 | 자동으로 Knowledge Object가 되지 않는 rebuildable artifact |
+| 통합 DB read model | 하나의 활성 Read Model Provider가 관리하는 Rebuildable Artifact |
+| Source backup·restore | Rebuildable Artifact가 아닌 source 복구 요건. 구체적인 범위와 절차는 단계 18에서 정한다. |
+| replica | 최초 Canonical에서 제외하며 가용성·분산 요구가 생기면 단계 19에서 확장한다. |
+| 일반 runtime cache | 최초 Rebuildable Artifact 범위에서 제외한다. 구현상 필요성이 확인되면 단계 18에서 검토하여 확장한다. |
+| validation report | validation 판정의 근거와 issue를 설명하는 결과. 역할, 최소 내용과 보존 여부는 단계 9에서 정한다. |
 
-Derived 결과를 canonical source로 승격하거나 독립된 Knowledge Object로 materialize하려면 그
-identity, provenance, revision, lifecycle과 재계산 관계를 명시하는 별도 규칙이 필요하다.
+#### 후속 단계로 이관한 세부사항
 
-#### 상세 논의 질문
+| 주 책임 단계 | 이관된 논의사항 |
+| --- | --- |
+| 단계 2 | JSON/file Source Store의 canonical commit 경계, 정상 경로 밖의 직접 Source 변경 처리와 향후 DBMS를 Source Store로 채택할 가능성 |
+| 단계 2·12 | 저장되기 전 편집 상태, transaction 중간 상태, recovery record와 `Nodes` 중 무엇을 Source Knowledge Object로 인정할지 |
+| 단계 6 | explicit Edge만 Relation Index에 투영하는 최초 경계와 향후 field-encoded reference indexing |
+| 단계 8·11 | permission 관련 의미의 불변성 Axiom, 실행 Constraint, permission-bearing Relation Type과 생성·철회 권한 |
+| 단계 9 | 최소 구조 admission과 semantic validity의 분리, 일반 object의 pre-commit blocking 검사, Package·Rule 후보 예외, 결과 보존 여부, issue 등급과 validation report |
+| 단계 11·13 | visibility와 permission의 분리, query-time Effective Permission Join, 내부 평가 graph와 permission explanation |
+| 단계 12 | Source Knowledge Object 영역과 단일 Read Model Provider를 조정하는 논리적 canonical mutation, Source Store와 Object Reader의 저장 위치 해석·읽기 책임, Provider-neutral 논리 저장 구조와 Table 후보, artifact schema/build/freshness, `ready`·`stale`·`corrupt`·`not-ready` 판정, full·incremental rebuild와 transaction recovery |
+| 단계 13 | Object/Relation Index의 논리 record·Join·lookup contract, adjacency·backlink·search, permission filtering과 count·ordering·pagination 경계 |
+| 단계 17 | DB 구현이 달라도 같은 source에서 동일한 조회 결과와 full/incremental parity를 얻는 conformance fixture |
+| 단계 18 | 단계 12·13의 논리 설계를 선택 DBMS의 실제 table·column·datatype·index·constraint로 구현하는 물리 DB schema, 현재 SQLite와의 Gap·migration, Source backup·restore와 일반 runtime cache |
+| 단계 19 | replica 확장 및 derived assertion의 정의와 안전 원칙, 추론 grammar·provenance·freshness·중복 판정·projection 및 Source Edge 생성 보조 기능 |
 
-1. canonical source의 최소 단위는 JSON object, event/history chain, 선언 registry entry 또는
-   이들의 결합 중 무엇인가?
-2. source-backed object와 declared virtual term이 같은 ID를 제공하면 충돌인가, materialization
-   전환인가? 어떤 equivalence 검사가 필요한가?
-3. derived artifact가 “다시 계산 가능”하다는 기준에는 동일한 값뿐 아니라 provenance,
-   ordering, validation code와 explanation도 포함되는가?
-4. inference 결과를 materialize했을 때 canonical assertion이 되는가, cache된 derived
-   assertion으로 남는가? source 승격은 누가 어떤 절차로 승인하는가?
-5. derived 결과를 사람이 수정하면 새 explicit assertion으로 전환되는가, 수정 자체를
-   금지하는가?
-6. source가 삭제·deprecated·invalidated되었을 때 이를 바탕으로 한 projection과 closure의
-   invalidation 시점과 stale 처리 원칙은 무엇인가?
-7. source-only rebuild의 입력에는 ontology version, bootstrap registry와 permission-independent
-   source가 모두 포함되어야 하는가?
+#### 1.9 승인 상태
+
+다음 목록은 이 절에서 승인된 핵심 경계의 요약이다. 세부 contract, 예외와 후속 단계 이관 범위는
+앞선 본문을 따른다. `권한 관련 의미의 불변성 Axiom 후보`와 `Nodes` 형식 후보는 이번 Decision에
+포함하지 않으며, 앞서 명시한 단계 8·11 및 단계 2·12에서 각각 확정한다.
+
+1. 최소 구조 admission validation을 통과하고 승인된 절차에 따라 논리적 canonical mutation의
+   commit이 완료된 JSON/file Node·Edge가 Source Knowledge Object이며, 최소 구조 무결성과
+   semantic validity는 서로 다른 검증 축이다.
+2. 일반 Knowledge Object는 현재 활성 Runtime Rule Set의 commit-blocking Constraint를 source
+   commit 전에 평가한다. `type.package`와 `type.rule` 작성 후보는 최소 구조와 작성 권한을 충족하면
+   Source로 보존하고, 관리자 활성화 요청에서 다시 compile·검증한다. Semantic validity를 Source의
+   `props`나 별도 영속 record로 저장할 의무는 두지 않는다.
+3. Rebuildable Artifact는 Source Knowledge Object와 승인된 projection contract로 재생성하는
+   비권위적 통합 read model이며 Knowledge Object가 아니다.
+4. 최초 Canonical에서는 하나의 canonical ID에 하나의 Source Knowledge Object만 허용한다. 같은
+   canonical ID를 주장하는 복수 JSON/file 표현은 충돌로 처리하고 어느 것도 자동으로 선택하지
+   않는다. 탐색·목록·관계 조회는 Rebuildable Artifact를 사용하며, 전체 Knowledge Object는
+   canonical ID를 이용해 Object Reader가 Source Store에서 읽는다. 저장 위치 해석은 별도의 source
+   권위나 독립된 Rebuildable Artifact를 구성하지 않는다.
+5. 최초 Canonical은 하나의 활성 Read Model Provider를 사용한다. Provider는 승인된 projection
+   contract에 따라 Rebuildable Artifact의 생성, full reindex, incremental projection update,
+   저장, freshness 관리와 조회를 담당하고 Object Index와 Relation Index의 최소 조회 contract를
+   보장한다. Provider-neutral 논리 구조는 단계 12·13에서, 선택 DBMS의 구체적인 물리 DB schema와
+   migration은 단계 18에서 확정한다. 내부 module 분리는 구현 선택이며 Relation Index는 explicit
+   Source Edge만 투영한다. Source Knowledge Object를 저장하고 읽는 영역과 Read Model Provider
+   영역은 논리적으로 구분하고, 그 위의 통합 시스템이 두 영역을 하나의 canonical mutation과
+   recovery 경계로 조정한다. 이 구분은 별도 process, service 또는 class 구성을 강제하지 않으며,
+   Read Model Provider에 Source의 저장·mutation 또는 source 권위를 부여하지 않는다.
+6. Artifact record는 자체 `rev`를 갖지 않으며 Source Knowledge Object의 `rev`를 record마다 복제하는
+   것을 최소 contract로 요구하지 않는다. Relation Index의 `edge_id`는 Source Edge의 canonical
+   `id`와 동일하며 별도의 backing-source ID를 중복해서 요구하지 않는다. Edge의 `status`와
+   `visibility`는 공통 Object Index에서 조회하며 Relation Index에 중복 저장할 의무를 두지 않는다.
+7. Effective Permission은 visibility, 직접 permission·membership·ownership·scope 관계, account
+   상태와 request context를 평가하여 계산한다. 독립적인 effective-permission record로
+   materialize하지 않고 Rebuildable Artifact의 직접 object·relation 정보를 query-time에 Join한다.
+8. Source Knowledge Object mutation과 그에 대응하는 Rebuildable Artifact update는 하나의 논리적
+   canonical mutation으로 처리한다. 양쪽이 모두 성공하여 commit이 확정된 뒤에만 함께 정상 조회에
+   공개하고, commit 전에 어느 한쪽이 실패하면 이전의 일관된 Source와 Artifact를 유지한다. 완료
+   여부를 확정할 수 없으면 정상 서비스를 재개하기 전에 양쪽 commit을 완료하거나 이전 상태로
+   복구한다. 이미 논리적 commit이 완료된 뒤 Artifact가 손상·유실되거나 Source와의 불일치가
+   발견되면 commit된 Source의 권위를 취소하지 않고 Artifact를 정상 조회에서 제외하여 rebuild한다.
+   Incremental projection update는 영향받은 projection만 갱신하는 최적화이며, 같은 source 상태에
+   대한 full reindex와 관찰 가능한 결과가 같아야 한다.
+9. `ready`, `stale`, `corrupt`와 `not-ready`는 Knowledge Object의 lifecycle `status`가 아니라
+   transaction·recovery 결과, Source와 Artifact의 일치 여부 및 Artifact 자체의 무결성으로 판정하는
+   운영 상태다. 정상 canonical mutation·rebuild 또는 recovery가 완료되고 Source와의 일치 및
+   Artifact 무결성이 확인된 경우에만 `ready`로 사용한다. 정상 incremental update 실패는 이전의
+   일관된 `ready` 상태를 유지하며, `stale`은 정상 transaction 밖의 변경이나 recovery 검사에서
+   불일치가 확인된 예외 상태로 제한한다. `stale`, `corrupt` 또는 `not-ready` 상태의 Artifact는
+   정상 artifact-backed query에 사용하지 않는다. 특정 상태 key와 판정·복구 절차는 단계 12에서
+   확정한다.
+10. `canonical source`는 Source Knowledge Object의 정형성을 강조하는 보조 표현이며,
+   `durable source`와 `virtual source`를 별도 source 분류로 사용하지 않는다.
+11. 최초 Canonical은 derived assertion을 생성하지 않으며 reasoning 기능은 단계 19로 이관한다.
+12. Source backup·restore는 단계 18, validation report는 단계 9, replica는 단계 19로 이관한다.
+   일반 runtime cache는 최초 범위에서 제외하고 구현상 필요성이 확인되면 단계 18에서 확장한다.
+
+후속 단계는 위 경계를 재정의하지 않고, 앞의 이관표에 따라 validation issue 등급, commit과 recovery,
+물리 DB schema, permission vocabulary·traversal, artifact build·freshness와 conformance fixture를
+구체화한다.
 
 <a id="stage-1-boundary"></a>
 ### 1.10 책임 범위와 구현 경계
@@ -1664,7 +2251,7 @@ L.W.S. Ontology가 책임지는 범위 후보는 다음과 같다.
 1. Knowledge Object, Node와 Edge의 semantic role
 2. 의미에 영향을 주는 canonical JSON object grammar
 3. Type, Relation, Tag, Property, Definition과 Axiom의 기본 문법
-4. reference, relation, constraint, explicit assertion과 derived result의 해석
+4. reference, relation, constraint, source assertion과 source 기반 rebuildable artifact의 해석
 5. validation, materialization, projection과 query가 지켜야 할 관찰 가능한 contract
 6. 동일한 canonical source와 조건에 대한 일관된 기계 해석과 conformance 기준
 
@@ -1688,11 +2275,11 @@ shape와 규칙을 어떤 코드 구조로 구현할지는 구현의 책임이�
 
 #### 상세 논의 질문
 
-1. query semantics 중 direct/derived 구분, ordering, pagination, ranking과 full-text search는
+1. query semantics 중 source/projection 구분, ordering, pagination, ranking과 full-text search는
    각각 ontology contract인가 API contract인가?
 2. permission은 ontology vocabulary로 관계를 표현하는 범위와 실제 authorization enforcement
    범위를 어디에서 나눌 것인가?
-3. visibility 때문에 읽을 수 없는 object를 reference validation, inference와 cardinality에서
+3. visibility 때문에 읽을 수 없는 object를 reference validation과 cardinality에서
    존재하지 않는 것으로 취급해서는 안 된다는 규칙은 ontology인가 security contract인가?
 4. lifecycle 상태(`draft`, `active`, `deprecated`, `archived`, `deleted`)의 의미는 ontology가
    규정하고, 상태 전환 권한과 UI workflow만 애플리케이션이 규정하는가?
@@ -1742,12 +2329,13 @@ shape와 규칙을 어떤 코드 구조로 구현할지는 구현의 책임이�
 1. **추적 가능한 규칙 집행**: validation, materialization, projection과 query 결과를 governing
    Decision·Term·Axiom·Constraint 및 source provenance에 연결할 수 있어야 한다.
 2. **설명 가능한 conformance**: 기계와 사람이 적용 규칙과 판정 근거를 확인할 수 있어야 한다.
-3. **필요한 derived state의 재구성 가능성**: Canonical 범위에 포함되는 index, projection과
-   closure는 canonical source와 적용 규칙에서 다시 만들 수 있어야 한다.
+3. **필요한 rebuildable state의 재구성 가능성**: Canonical 범위에 포함되는 index와 projection은
+   Source Knowledge Object와 적용 규칙에서 다시 만들 수 있어야 한다.
 
 보증 요건의 최소 범위와 관찰 가능한 결과는 관련 의미 규칙이 정해진 뒤 후속 단계에서
-구체화한다. 고급 inference, 전체 설명 경로, 대규모 reasoning과 외부 표준 호환은 현재의
-secondary goal로 승격하지 않고 아래 non-goal 또는 단계 19의 확장 과제로 관리한다.
+구체화한다. semantic derived assertion, 자동 inference, 전체 추론 설명 경로, 대규모 reasoning과
+외부 표준 호환은 현재의 secondary goal로 승격하지 않고 아래 non-goal 또는 단계 19의 확장
+과제로 관리한다.
 
 #### 일관된 의미 해석의 기준
 
@@ -1783,9 +2371,9 @@ object kind, semantic role, reference와 assertion/constraint를 동일한 의�
 저자는 사람 B다”라는 관계의 방향과 적용된 source/target role constraint를 서로 반대로
 해석해서는 안 된다.
 
-`Valid`, `Invalid`, `Unknown` 같은 판정 상태, direct/derived 지위, provenance와 규범적인
-query/projection 결과는 아직 의미가 확정되지 않았으므로 이 단계의 예시로 선결하지 않는다.
-해당 규칙은 1.7, 1.12, 1.13과 관련 후속 단계에서 확정한 뒤 관찰 가능한 동일성 범위에
+`Valid`, `Invalid`, `Unknown` 같은 판정 상태, provenance와 규범적인 query/projection 결과는 아직
+의미가 확정되지 않았으므로 이 단계의 예시로 선결하지 않는다. 해당 규칙은 1.7, 1.13과 관련
+후속 단계에서 확정한 뒤 관찰 가능한 동일성 범위에
 추가한다.
 
 #### Reference domain과 conformance fixture
@@ -1809,7 +2397,8 @@ Reference domain의 구체 사례를 실행 가능한 입력과 기대 해석으
 3. 물리 파일 layout, database table, cache와 module architecture를 고정하는 것
 4. semantic 결과에 영향을 주지 않는 내부 알고리즘을 통일하는 것
 5. Specification 논의와 동시에 기존 source, schema 또는 validator를 변경하는 것
-6. 첫 Canonical 범위에서 완전한 범용 추론 엔진이나 외부 ontology 표준 호환을 달성하는 것
+6. 첫 Canonical 범위에서 semantic derived assertion이나 자동 inference를 생성하거나, 범용 추론
+   엔진 또는 외부 ontology 표준 호환을 달성하는 것
 7. L.W.S.가 기록하지 않은 세계의 모든 사실을 완전하게 표현하거나 참이라고 판정하는 것
 8. 단계 1에서 모든 canonical field, 구체적인 JSON Schema fragment, ontology 규칙 집합의
    식별 방식 또는 실제 reference domain fixture를 확정하는 것
@@ -1819,50 +2408,10 @@ Reference domain의 구체 사례를 실행 가능한 입력과 기대 해석으
 1. self-description과 ontology materialization은 최초 Canonical의 필수 목표인가, bootstrap
    fallback을 허용한 뒤 달성할 후속 목표인가?
 2. Domain 확장성보다 Core의 폐쇄성과 예측 가능성이 우선되는 지점은 어디인가?
-3. explainability에는 rule ID와 provenance만 필요한가, 전체 inference/validation 경로까지
-   재현할 수 있어야 하는가?
+3. explainability에는 governing Constraint와 source reference만 필요한가, 전체 validation 경로까지
+   재현할 수 있어야 하는가? 추론 explanation은 단계 19에서 별도로 다룬다.
 4. 성능, 대규모 graph reasoning과 외부 federation은 명시적으로 어느 단계까지 non-goal로
    둘 것인가?
-
-<a id="stage-1-inference"></a>
-### 1.12 명시적 선언과 자동 추론의 경계
-
-**Proposal**
-
-논의를 위해 지식의 지위를 다음과 같이 구분한다.
-
-| 지위 | 정의 후보 |
-| --- | --- |
-| Explicit assertion | 사용자 또는 승인된 source mutation이 canonical Node/Edge로 직접 기록한 사실 |
-| Inference rule | explicit source와 다른 derived assertion에서 새 결론을 계산하는 versioned ontology rule |
-| Derived assertion | inference rule의 평가 결과. provenance와 적용 ontology/context 없이는 독립적인 canonical source가 아님 |
-| Materialized derived assertion | 성능이나 조회를 위해 저장한 derived assertion. 별도 승격 규칙이 없으면 여전히 재계산 가능한 derived 지위를 유지함 |
-
-초기 안전 기준 후보는 “선언된 inference rule만 실행하고, inferred 결과는 explicit source와
-구분하며, 자동으로 canonical source assertion으로 승격하지 않는다”이다. 허용할 inference
-종류와 강제 수준은 아직 정하지 않는다.
-
-#### 상세 논의 질문
-
-1. 최초 Canonical에서 허용할 추론은 subclass, inverse relation, transitive closure와 default
-   value 중 어디까지인가? 단계 19로 미룰 추론은 무엇인가?
-2. inference rule은 비실행 Axiom이나 validation Constraint와 구별되는 별도 executable Rule
-   Type인가, 아니면 code에 연결된 Core declaration인가?
-3. derived assertion에 source assertion 집합, rule ID/version, evaluation time과 context를 어느
-   수준까지 provenance로 보존해야 하는가?
-4. explicit assertion과 derived assertion이 충돌하면 explicit가 우선하는가, validation issue를
-   발생시키는가, 둘을 동시에 유지하는가?
-5. derived assertion끼리 충돌하거나 순환할 때 evaluation ordering, fixed point와 중단 조건을
-   어디까지 규정해야 하는가?
-6. inference는 monotonic rule로 제한하는가? source 삭제나 negation으로 기존 결론을 철회하는
-   non-monotonic rule을 허용하는가?
-7. inferred fact가 required relation, permission 또는 blocking validation을 충족하는 근거로
-   사용될 수 있는가?
-8. 사용자가 inferred 결과를 명시적으로 승인하면 같은 ID의 explicit assertion으로 승격하는가,
-   별도의 provenance-bearing assertion을 생성하는가?
-9. query consumer가 direct-only, inferred-only 또는 combined view를 선택할 수 있어야 하는가?
-10. ontology version 변경 뒤 기존 materialized inference는 언제 invalidated되고 어떻게
-    rebuild되는가?
 
 <a id="stage-1-world-assumption"></a>
 ### 1.13 Open-world와 closed-world 해석 정책
@@ -1925,7 +2474,7 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 | --- | --- | --- | --- |
 | `Blocking` | Axiom과 Constraint의 적용 조건을 canonical source 또는 적용 규칙에 어떻게 명시하여 숨겨진 runtime 상태에 따른 의미 차이를 막는가? | “같은 source와 규칙의 같은 의미”를 판정하는 입력 범위를 결정한다. | 단계 8·9·13 |
 | `Blocking` | invalid source를 보존하면서 Knowledge Graph 참여를 제한할 수 있는가? | source 보존과 graph validity를 분리한다. | 단계 9·14 |
-| `Blocking` | bootstrap code/schema와 materialized ontology가 충돌하면 어느 쪽이 resolver의 authority인가? | self-description과 구현 drift의 경계를 결정한다. | 단계 2·12 |
+| `Blocking` | bootstrap code와 materialized bootstrap Node의 설명이 충돌할 때 drift를 어떻게 검출·복구하는가? | Kernel code는 동작 구현이고 materialized Node는 유일한 Knowledge Object라는 경계의 집행 방식을 결정한다. | 단계 2·12 |
 | `Blocking` | Core namespace와 domain extension point를 누가 소유하고 충돌을 어떻게 막는가? | semantic role의 무제한 확장을 방지한다. | 단계 4·11·15 |
 | `Blocking` | ontology change가 기존 instance의 의미를 소급 변경할 수 있는가? | version, migration과 historical interpretation의 기준이 된다. | 단계 4·14 |
 | `Blocking` | permission-filtered consumer도 conformance를 판정할 수 있는가, privileged validator만 가능한가? | 숨겨진 metadata 유출 없이 validation 일관성을 유지해야 한다. | 단계 9·11·17 |
@@ -1941,20 +2490,22 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 아래 분류의 `Blocking`은 해당 문제를 해결하지 않은 채 전체 Specification을 Canonical로
 승인할 수 없다는 뜻이다. 후속 단계가 지정된 항목은 단계 1에서 문제의 경계와 이관 위치를
-합의한 뒤 세부 결정을 해당 단계에서 내릴 수 있다.
+합의한 뒤 세부 결정을 해당 단계에서 내릴 수 있다. `Deferred`는 최초 Canonical의 완료를
+차단하지 않으며, 지정된 확장 단계에서 별도의 기능 승인 대상으로 다룬다.
 
 | 분류 | 논의할 사항 | 주된 논의 단계 |
 | --- | --- | --- |
-| `Blocking` | Knowledge Object의 최소 성질을 identity, addressability, revision, lifecycle, semantic role과 source 지위 중 어디까지로 정할지 | 단계 1·2 |
-| `Blocking` | `durable source`, `virtual source` 용어를 유지할지와 virtual term의 canonical 지위·권위·identity를 어떻게 정할지 | 단계 2 |
+| `Blocking` | Source Knowledge Object의 저장·transaction·recovery 경계, global ID uniqueness의 집행과 Object Reader의 읽기 책임을 정하고 identity conflict를 어떻게 처리할지 | 단계 2·12 |
+| `Blocking` | Mutation Event·global event log·history·patch 중 무엇을 `Nodes` 형식의 Knowledge Object로 채택하고 JSONL을 포함한 논리·물리 표현을 어떻게 정의할지 | 단계 2·12 |
 | `Blocking` | Ontology, Knowledge Graph, Schema, Validation과 Projection의 정의·권위·입출력 관계와 invalid source의 graph 지위 | 단계 1·9 |
-| `Blocking` | Meta, Core, Domain, Instance와 Derived 층위의 정확한 경계와 한 term이 여러 층위에 관여하는 방식을 어떻게 표현할지 | 단계 1·3 |
+| `Blocking` | Meta, Core, Domain, Instance와 Rebuildable 층위의 정확한 경계와 한 term이 여러 층위에 관여하는 방식을 어떻게 표현할지 | 단계 1·3 |
 | `Blocking` | Type/Tag/Relation role, 이를 나타내는 Core object와 Domain term 사이의 관계를 instance, role assignment 또는 다른 relation 중 무엇으로 표현할지 | 단계 3·5·6 |
+| `Blocking` | Node Type은 단일 primary system contract, Tag는 다중 domain·semantic classification이라는 경계를 Type 변경·Tag Constraint·현행 분류형 Type migration에 어떻게 적용할지 | 단계 5·14 |
 | `Blocking` | Core와 Domain Ontology를 무엇으로 materialize하며 virtual term과 materialized object 사이 identity를 어떻게 유지할지 | 단계 2·12 |
 | `Blocking` | Knowledge Object 공통 canonical field와 Node/Edge별 field를 어디까지 요구할지. 특히 slug의 공통성, 필수성, 생성, uniqueness와 alias 정책 | 단계 4 |
 | `Blocking` | Relation endpoint의 기본 Node-only 정책과 Edge endpoint opt-in을 canonical JSON profile 및 semantic validation에 어떻게 표현할지 | 단계 6 |
 | `Blocking` | JSON Schema와 Semantic Validator가 겹치는 규칙의 단일 conformance 판정 및 두 구현이 충돌할 때의 처리 | 단계 7·9 |
-| `Blocking` | explicit source assertion과 자동 inference의 경계, 허용 rule, 충돌 우선순위, provenance, derived assertion의 identity와 source 승격 조건 | 단계 1·2·8·13 |
+| `Deferred` | semantic derived assertion, 자동 inference, 허용 rule, 충돌·provenance·identity와 Source Edge 생성 보조 기능 | 단계 19 |
 | `Blocking` | 누락된 사실을 `Unknown`, `Absent`, `False`, `Invalid` 중 무엇으로 보는지와 open-world/closed-world 정책을 적용하는 authoritative scope | 단계 1·7·9·13 |
 | `Blocking` | 초기 목표의 우선순위, 최초 Canonical의 필수 범위와 측정 가능한 성공·conformance 기준 | 단계 1·17 |
 | `Blocking` | 동일한 의미를 판정할 승인 규칙 집합의 식별 방식과 conformance 단위 | 단계 1·4·9·17 |
@@ -1982,11 +2533,10 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 6. JSON Schema와 Semantic Validator를 논의 단계가 아니라 집행 책임으로 구분하는 방식이
    승인되었다.
 7. 초기 목표, 우선순위, 성공 기준과 non-goal이 승인되었다.
-8. canonical source, virtual term과 derived artifact의 기본 지위가 승인되었다.
-9. 명시적 assertion과 inference의 경계가 승인되었다.
-10. open-world/closed-world 적용 단위와 `Unknown`, `Absent`, `False`, `Invalid`의 구분이
+8. Source Knowledge Object(`canonical source`)와 rebuildable artifact의 기본 지위가 승인되었다.
+9. open-world/closed-world 적용 단위와 `Unknown`, `Absent`, `False`, `Invalid`의 구분이
     승인되었다.
-11. 단계 1에서 확정하지 않는 세부 쟁점이 적절한 후속 단계로 이관되었다.
+10. 단계 1에서 확정하지 않는 세부 쟁점이 적절한 후속 단계로 이관되었다.
 
 현재는 위 조건을 검토하는 중이므로 단계 1을 완료하거나 `Decision`으로 간주하지 않는다.
 
@@ -2001,14 +2551,38 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 1. `[Blocking]` Value/Literal과 first-class Knowledge Object의 경계를 독립 identity, source,
    revision과 addressability 중 어떤 기준으로 판정할지 정한다.
-2. `[Blocking]` `type.term`, `type.group`, `type.package`, `type.rule`과 operator identity를 제공하는
-   Bootstrap Vocabulary Provider와 materialized read-only Term의 authority 관계를 정한다.
+2. `[Blocking]` `type.term`, `type.group`, `type.package`, `type.rule`과 operator identity에서 Kernel
+   code는 동작 구현이고 materialized read-only Term Node는 유일한 Knowledge Object·Definition이라는
+   책임 분리를 source와 bootstrap model에 반영한다.
 3. `[Blocking]` bootstrap Term의 meta-circular self-description을 어떤 최소 code/schema로 끊고,
    virtual identity와 materialized Knowledge Object 사이에서 같은 identity를 유지할지 정한다.
 4. `[Blocking]` Object Reader가 semantic 판단 없이 반환하기 위해 요구할 최소 decode contract와,
    read/decode 실패와 semantic invalid를 구분하는 기준을 정한다.
 
 <!-- 논의 후 작성 -->
+
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 같은 ID의 서로 다른 Knowledge Object는 identity conflict이며, Kernel code는
+   bootstrap 동작 구현이고 materialized bootstrap Node는 해당 identity의 유일한 Knowledge
+   Object·Definition이라는 경계를 source model에 반영한다.
+2. `[Blocking]` Mutation Event, history 또는 Log record 가운데 무엇을 `Nodes` 형식의 Knowledge
+   Object로 채택하고 무엇을 Knowledge Object 밖의 운영 record로 둘지 정한다.
+
+<!-- 논의 후 작성 -->
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 최소 구조 admission validation과 원자적 JSON/file commit의 구체적인 절차를
+   정하고, 최소 구조를 해석할 수 없는 corrupt record 및 저장 전 편집 상태·transaction 중간
+   상태·recovery record를 Source Knowledge Object와 구분한다.
+2. `[Deferred]` 향후 DBMS를 Source Store로 채택할 경우 물리적 source authority와
+   Source Knowledge Object 읽기 contract가 어떻게 달라지는지 별도 평가한다. 최초 Canonical은
+   JSON/file Source Store와 하나의 rebuildable DB read model을 전제로 한다.
 
 <a id="stage-3"></a>
 ## 단계 3 — Core meta-model과 semantic role
@@ -2048,6 +2622,17 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <!-- 논의 후 작성 -->
 
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 모든 Knowledge Object가 참조하는 공통 lifecycle vocabulary와 Type별 추가
+   status·transition contract를 정한다.
+2. `[Blocking]` 현재 canonical object의 mutation `rev`, ontology semantic version, lifecycle과
+   runtime activation을 서로 다른 축으로 유지하는 canonical field 규칙을 정한다.
+
+<!-- 논의 후 작성 -->
+
 <a id="stage-5"></a>
 ## 단계 5 — Type과 classification 규칙
 
@@ -2064,6 +2649,19 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <!-- 논의 후 작성 -->
 
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Node가 정확히 하나의 primary system contract Type을 참조하고 0개 이상의 Tag로
+   domain·semantic classification을 표현하는 canonical grammar를 정한다.
+2. `[Blocking]` Tag Constraint는 semantic validation을 적용할 수 있지만 기본 저장·mutation
+   contract를 바꾸지 못한다는 경계와 Type으로 승격해야 하는 조건을 정한다.
+3. `[Blocking]` Type 변경의 migration·재검증, Type extension, Tag hierarchy·상충과 cardinality를
+   정한다.
+
+<!-- 논의 후 작성 -->
+
 <a id="stage-6"></a>
 ## 단계 6 — Relation과 statement 규칙
 
@@ -2073,14 +2671,48 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 1. `[Blocking]` field-encoded relation과 독립 identity를 가진 explicit Edge Knowledge Object의
    선택 기준을 정한다.
-2. `[Blocking]` 같은 assertion을 field와 Edge 양쪽에 canonical source로 중복 기록하지 않도록
-   source authority와 충돌 처리 규칙을 정한다.
+2. `[Blocking]` 같은 assertion을 field와 Edge 양쪽의 Source Knowledge Object 표현으로 중복
+   기록하지 않도록 단일 canonical 표현과 충돌 처리 규칙을 정한다.
 3. `[Blocking]` Axiom과 이를 operationalize하는 Constraint 사이의 추적 Edge에 사용할 Relation
    Type, 방향과 cardinality를 정한다. 이 Edge는 실행 dependency가 아니어야 한다.
 4. `[Blocking]` semantic role, provenance, revision, lifecycle 또는 관계 자체에 대한 statement가
    필요할 때 explicit Edge로 승격하는 기준을 정한다.
 
 <!-- 논의 후 작성 -->
+
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Edge의 구조적 endpoint는 Knowledge Object지만 Relation Type별 명시적 opt-in이
+   없는 경우 Node endpoint만 허용하는 기본 폐쇄 정책을 canonical profile로 표현한다.
+2. `[Blocking]` Edge `type`은 Node의 system contract Type과 달리 관계 predicate의 의미를
+   식별한다는 차이를 relation grammar와 validation에 반영한다.
+
+#### 이관된 Edge endpoint 기준안
+
+Edge가 first-class object라는 이유만으로 모든 Relation의 `source`와 `target`에 Edge를 무제한
+허용하지 않는다. 현재 논의의 기준안은 다음과 같다.
+
+> Relation semantic profile이 `source` 또는 `target`에 `edge` object kind를 명시적으로
+> 허용한 경우에만 Edge endpoint를 유효하게 본다. 해당 정책이 없으면 Node endpoint만
+> 허용하는 방향으로 해석한다.
+
+이 기준안은 Edge endpoint의 기본 폐쇄 정책을 제시할 뿐이며, Relation별 endpoint policy와
+`rel.instantiates` 같은 구체적인 relation은 이 단계에서 확정한다. Relation Term 사이의 계층
+관계와 실제 Edge Instance가 Definition 또는 evidence를 참조하는 meta-relation도 구분해서
+논의해야 한다.
+
+<!-- 논의 후 작성 -->
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 최초 Relation Index가 explicit Source Edge만 투영한다는 경계를 Relation
+   grammar와 연결하고, 탐색 가능한 관계를 explicit Edge로 기록해야 하는 조건을 정한다.
+2. `[Deferred]` 향후 field-encoded reference를 관계 index에 포함할 필요가 생기면 canonical
+   field 의미, 방향, Relation Type 대응과 Source Knowledge Object 추적 방식을 정한다.
 
 <a id="stage-7"></a>
 ## 단계 7 — Property와 value model
@@ -2095,6 +2727,15 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
    Ontology Term에 연결할지 정한다.
 3. `[Blocking]` JSON Schema가 집행할 Term role의 structural shape와 Semantic Validator가
    집행할 role reference를 구분하고 두 결과의 단일 conformance 판정을 정한다.
+
+<!-- 논의 후 작성 -->
+
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Node와 Edge의 공통 `props` 확장 영역, 자연어 Definition과 Knowledge Object
+   reference value의 canonical path·shape를 정한다.
 
 <!-- 논의 후 작성 -->
 
@@ -2120,6 +2761,26 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <!-- 논의 후 작성 -->
 
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `type.axiom` 자체는 Type 역할의 `type.term` Node이고 실제 Axiom은
+   `type.axiom` Node인 meta-circular canonical grammar를 정한다.
+2. `[Blocking]` global Knowledge Object ID uniqueness 의미 원칙을 `type.axiom` Node로 표현하고,
+   이를 집행하는 Bootstrap Kernel invariant 및 진단 Constraint와 연결한다.
+
+<!-- 논의 후 작성 -->
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` permission을 구성하거나 전달하는 assertion의 authorization-effective content를
+   in-place 변경할 수 없다는 Axiom의 정확한 명제와 적용 대상을 정한다.
+2. `[Blocking]` 위 Axiom을 operationalize하여 mutation을 거부할 Constraint의 operator,
+   operand와 validation 결과를 정의한다. Axiom 자체는 실행하지 않는다.
+
 <a id="stage-9"></a>
 ## 단계 9 — Validation과 semantic issue
 
@@ -2139,6 +2800,27 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
    Package 참여를 제한하는 방식을 정한다.
 
 <!-- 논의 후 작성 -->
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 최소 구조 admission validation과 Semantic Constraint 평가를 별도 검증 축으로
+   구현하고, 어떤 semantic issue가 validity를 무효화하는지 정한다.
+2. `[Blocking]` 일반 Knowledge Object의 source commit 전에 평가할 commit-blocking Constraint와
+   commit 후 재검증할 Constraint를 구분하고, `Blocking`·`Warning`·`Advisory` 등 issue 등급을 정한다.
+3. `[Blocking]` `type.package`와 `type.rule` 작성 후보가 일반 Runtime Rule Set의 commit-blocking
+   검사에 적용받지 않는 정확한 경계와, 최소 구조·작성 권한·활성화 시 compile 및 전체 검증 조건을
+   정한다.
+4. `[Blocking]` semantic validation 미평가·invalid Source Knowledge Object의 저장 보존,
+   quarantine, Knowledge Graph·projection·query 참여와 Runtime 사용 제한을 정한다.
+5. `[Blocking]` semantic validity 결과를 Source `props`나 별도 영속 record로 저장하도록 요구하지
+   않는 기본 원칙을 유지하고, cache·audit 또는 관리자 검토를 위해 보존할 필요가 있는 결과의
+   범위와 freshness를 정한다.
+6. `[Blocking]` validation report를 validation 판정의 근거와 issue를 설명하는 결과로 정의하고,
+   대상 ID, 적용 Schema·Constraint·Rule, 결과·issue·severity·위치·explanation 등 최소 내용과
+   일시 반환·지속 보존 여부를 정한다. Source Knowledge Object 또는 Rebuildable Artifact로
+   자동 분류하지 않는다.
 
 <a id="stage-10"></a>
 ## 단계 10 — Group, containment, scope ontology
@@ -2177,6 +2859,20 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <!-- 논의 후 작성 -->
 
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` permission effect를 갖는 Core Relation Type Term과 Group·ownership·scope
+   관계의 canonical 목록 및 적용 범위를 정한다.
+2. `[Blocking]` permission assertion의 authorization-effective content, 생성·철회·삭제와
+   lifecycle transition의 권한을 정하고 설명용 metadata 수정과 구분한다.
+3. `[Blocking]` Core permission Relation Type Term의 identity와 의미는 read-only로 보호하며,
+   이름이 유사한 사용자 작성 Relation Type에는 자동으로 permission effect를 부여하지 않는
+   governance rule을 정한다.
+4. `[Blocking]` Effective Permission evaluator가 사용할 내부 permission graph, capability,
+   allow·deny 충돌, Group·scope traversal 및 설명 권한을 정한다.
+
 <a id="stage-12"></a>
 ## 단계 12 — Materialization contract
 
@@ -2184,10 +2880,10 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 **Unresolved**
 
-1. `[Blocking]` Bootstrap Vocabulary Provider의 identity를 read-only Knowledge Object 또는
-   ontology view로 materialize하는 canonical shape와 idempotency를 정한다.
-2. `[Blocking]` Kernel code와 read-only materialization의 설명이 충돌할 때 Runtime은 Kernel을
-   유지하고 drift를 보고한다는 최초 contract와 향후 authority 승격 조건을 정한다.
+1. `[Blocking]` Kernel code가 구현하는 bootstrap identity를 유일한 read-only Node Knowledge
+   Object·자연어 Definition으로 materialize하는 canonical shape와 idempotency를 정한다.
+2. `[Blocking]` materialized bootstrap Node의 설명과 실제 Kernel 동작이 충돌할 때 Runtime은
+   Kernel code를 실행하고 documentation/materialization drift를 보고·복구하는 조건을 정한다.
 3. `[Blocking]` `type.term` 자체를 포함한 bootstrap Term의 meta-circular materialization 순서와
    virtual-to-materialized identity 보존을 정한다.
 4. `[Blocking]` Core Package를 한 번 컴파일하여 Runtime Rule Set으로 cache하고 원본 Rule Node를
@@ -2196,6 +2892,39 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
    기존 cache 유지 조건을 정한다.
 
 <!-- 논의 후 작성 -->
+
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` global Node·Edge·provider-backed Knowledge Object ID uniqueness의 atomic
+   reservation, fail-closed mutation, full integrity scan과 recovery contract를 정한다.
+2. `[Blocking]` 시간순으로 쌓이는 Object를 위한 `Nodes` 형식의 논리적 object 경계, Type contract,
+   entry identity와 Object Reader decode contract를 정하고 JSONL을 포함한 물리 표현을 평가한다.
+3. `[Blocking]` `Nodes`의 append-only payload, status 정정의 물리 기록 방식, patch·journal의 source
+   지위와 recovery transaction을 정한다. `rev`를 복수 Log record 중 하나를 선택하는 기준으로
+   사용하지 않는다.
+
+<!-- 논의 후 작성 -->
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 최초 Canonical에서 하나의 활성 Read Model Provider가 projection·full reindex·
+   incremental update·artifact 저장·freshness 관리·조회를 모두 담당하는 DB-neutral provider
+   contract와 활성 provider의 식별·교체 경계를 정한다. Provider가 관리할 논리 dataset·record,
+   key 대응과 artifact metadata를 Table 후보를 포함하여 설계하되 내부 module 분리는 구현 선택으로
+   둔다.
+2. `[Blocking]` Read Model Provider가 집행할 projection contract, artifact의
+   `ready`·`stale`·`corrupt` 상태, build ID와 source 상태 기준 및 새 build의 원자적 활성화를 정한다.
+3. `[Blocking]` full reindex와 incremental projection update가 같은 관찰 가능한 read model을 만들도록
+   한다. 정상 canonical mutation의 incremental update가 실패하면 이전의 일관된 Source와 Artifact를
+   유지하고, commit 이후 Artifact 손상·유실 또는 Source와의 불일치가 발견되면 Artifact를 정상
+   조회에서 제외한 뒤 rebuild하는 절차를 정한다.
+4. `[Blocking]` canonical ID로 Source Knowledge Object를 읽을 때 Source Store와 Object Reader가
+   맡는 저장 위치 해석, global uniqueness 검사, integrity conflict, fail-closed mutation과 recovery
+   절차를 정한다. 이 책임을 별도의 source나 독립된 Rebuildable Artifact로 두지 않는다.
 
 <a id="stage-13"></a>
 ## 단계 13 — Projection, query, explanation
@@ -2213,6 +2942,38 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <!-- 논의 후 작성 -->
 
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` `props` reference와 explicit Edge에서 adjacency·incoming reference·backlink를
+   재구성하면서 source 표현의 차이를 보존하는 projection contract를 정한다.
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` Object Index가 canonical ID, `object_kind`, `type`, `status`, `visibility` 중 어떤
+   조회 축을 보장할지 정한다. Artifact record 자체의 `rev`와 Source `rev`의 record별 복제는 최소
+   contract로 요구하지 않는다. 특정 query가 Source `rev`를 요구할 경우 Source에서 읽을지 선택적인
+   비권위적 projection으로 제공할지 정한다.
+2. `[Blocking]` Relation Index가 explicit Source Edge의 `id`를 `edge_id`로 복제하고
+   `source_id`, `target_id`, Relation Type으로 조회할 수 있게 하는 최소 contract를 정한다.
+   `edge_id`는 새 Knowledge Object identity가 아니며 별도 backing-source ID를 중복 저장하지
+   않는다. Edge의 `status`와 `visibility`는 `edge_id`로 공통 Object Index와 Join하여 조회한다.
+3. `[Blocking]` Source Knowledge Object만으로 object·relation·search index와
+   adjacency·backlink를 결정적으로 재구성하는 입력, freshness와 source 추적 설명을 정한다.
+4. `[Blocking]` Object Index와 Relation Index를 분리하는 논리 Table 후보, `edge_id` Join 및
+   source·target·Relation Type lookup에 필요한 논리 index contract를 정한다. 실제 table·column
+   이름과 DBMS별 index 구현은 단계 18에서 확정한다.
+5. `[Blocking]` Effective Permission을 독립 record로 materialize하지 않고 직접
+   permission·membership·ownership·scope Edge를 Join하여 계산하는 query contract를 정한다.
+6. `[Blocking]` permission evaluator가 사용자 visibility로 미리 잘리지 않은 내부 permission
+   graph를 사용하고, permission을 result count·ordering·pagination 전에 적용하며, 필요한 artifact가
+   stale·corrupt·not-ready이면 private 접근을 fail-closed하는 조건을 정한다.
+
+<!-- 논의 후 작성 -->
+
 <a id="stage-14"></a>
 ## 단계 14 — Compatibility와 source migration
 
@@ -2224,6 +2985,16 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
    instance와 reference에 요구하는 migration을 정한다.
 2. `[Blocking]` 기존 source가 `type.term` profile, 단일 semantic role 또는 Package membership
    규칙을 만족하지 않을 때 Compatibility, quarantine와 보정 방식을 정한다.
+
+<!-- 논의 후 작성 -->
+
+### 1.5에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 현행 `type.service`, `type.project`, `type.concept`, `type.event` 같은 domain
+   classification 중심 Node Type을 system contract Type과 semantic Tag 경계에 맞게 유지·전환·폐기하는
+   Compatibility 및 migration 규칙을 정한다.
 
 <!-- 논의 후 작성 -->
 
@@ -2268,8 +3039,39 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
 
 <!-- 논의 후 작성 -->
 
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 같은 Source Knowledge Object와 projection 규칙을 입력한 서로 다른 conforming
+   DB 구현이 같은 관찰 가능한 object·relation·search 결과를 만드는 fixture를 작성한다.
+2. `[Blocking]` full reindex와 동일한 mutation 집합을 적용한 incremental projection update의 결과가
+   동등한지, 삭제·rebuild와 stale recovery 뒤에도 동등성이 회복되는지 검증한다.
+3. `[Blocking]` Relation Index의 `edge_id`가 Source Edge canonical ID와 대응하고 orphan record가
+   남지 않는지, query-time permission Join과 fail-closed 경계가 지켜지는지 검증한다.
+
 <a id="stage-18"></a>
 ## 단계 18 — 구현과 release 전환
+
+### 1.9에서 이관된 논의사항
+
+**Unresolved**
+
+1. `[Blocking]` 단계 12·13에서 정한 Provider-neutral 논리 구조와 조회 contract를 선택한 DBMS의
+   실제 table·column·datatype·primary/foreign key·unique constraint·index와 DDL로 구체화한다.
+   현행 SQLite 구조와의 차이, migration·rollback 및 검증 계획도 정하며, 이 단계의 실행 승인
+   전까지 구현 변경을 승인하지 않는다.
+2. `[Blocking]` 현행 materialized effective-permission 보조 projection을 query-time Join 기준으로
+   전환할 경우의 성능·보안·결과 동등성, 단계적 migration과 rollback 조건을 검증한다.
+3. `[Blocking]` Source Knowledge Object 손실이나 source rewrite·migration 실패에서 복구할 수
+   있도록 Source backup·restore의 필수 범위와 restore 검증 조건을 정한다. Rebuildable Artifact는
+   source에서 재생성할 수 있으므로 같은 source 보존 요건을 적용하지 않는다.
+4. `[Execution-scoped]` Source backup의 저장 위치, 주기, 보존 기간, 암호화와 restore rehearsal 등
+   구체적인 운영 절차를 실행안에서 정한다.
+5. `[Execution-scoped]` 일반 runtime cache가 실제 구현에 필요한지 평가하고, 도입한다면 source나
+   Rebuildable Artifact의 권위를 대체하지 않도록 freshness, invalidation, permission과 failure
+   처리를 정한다. 관찰 가능한 conformance에 영향을 주는 요구가 발견되면 Specification 논의로
+   다시 올린다.
 
 <!-- 논의 후 작성 -->
 
@@ -2289,3 +3091,65 @@ scope별로 명시하는 **혼합 정책**을 논의 기준안으로 둔다.
    성능·종료·explainability contract
 
 <!-- 논의 후 작성 -->
+
+### 1.9에서 이관된 논의사항
+
+**Deferred**
+
+1. 최초 Canonical은 replica를 제공하지 않는다. 고가용성, read replica 또는 분산 저장 요구가
+   생기면 Source Knowledge Object와 Rebuildable Artifact 중 무엇을 복제하는지, consistency,
+   failover, 복구와 활성 source·provider 경계를 정의한 뒤 확장한다.
+
+### 단계 1의 derived assertion·자동 inference 논의에서 이관된 사항
+
+**Deferred**
+
+최초 Canonical은 derived assertion을 생성하지 않는다. 아래 내용은 단계 1의 1.9와 삭제된 1.12에서
+검토했던 reasoning 기능 후보를 보존한 것이며, 현재 Canonical 규칙이나 활성 기능이 아니다.
+
+#### 정의와 안전 원칙 후보
+
+`Derived assertion`은 Source Knowledge Object에 Edge로 직접 기록되지 않았으나, 하나 이상의
+source assertion 또는 Knowledge Object에 승인된 derivation rule을 적용하여 계산하는
+edge-shaped 관계 명제의 후보 개념이다. 향후 채택하더라도 derived assertion 자체를 자동으로
+Knowledge Object로 취급하지 않으며, first-class 관계 Knowledge Object로 materialize한다면 새
+canonical ID와 Edge contract를 가진 Source Edge를 생성해야 한다.
+
+> Graph path가 존재한다는 이유만으로 endpoint 사이의 derived assertion을 생성해서는 안 된다.
+> Derived assertion은 적용 Relation Type의 명시적 derivation semantics 또는 승인된 inference
+> Rule이 해당 결론을 규정할 때만 성립한다.
+
+단순 path·reachability, 집계, validation result와 source 기반 index·projection은 그 자체로 derived
+assertion이 아니다. 실제 추론을 채택할 경우 검토할 비규범 예시는 다음과 같다.
+
+| 종류 | Source assertion | 승인 rule 후보 | Derived assertion 후보 | 주의사항 |
+| --- | --- | --- | --- | --- |
+| Inverse | `책 --authored_by--> 사람` | `inverse(authored_by) = author_of` | `사람 --author_of--> 책` | 단순 backlink는 projection일 뿐이며 inverse rule이 있어야 assertion이 된다. |
+| Symmetric | `A --sibling_of--> B` | `sibling_of(x,y) → sibling_of(y,x)` | `B --sibling_of--> A` | 모든 Relation이 symmetric인 것은 아니다. |
+| Transitive | `A --ancestor_of--> B`, `B --ancestor_of--> C` | `ancestor_of(x,y) ∧ ancestor_of(y,z) → ancestor_of(x,z)` | `A --ancestor_of--> C` | 중간 Node와 source assertion을 provenance에서 추적해야 한다. |
+| Relation composition | `A --parent_of--> B`, `B --parent_of--> C` | `parent_of ∘ parent_of → grandparent_of` | `A --grandparent_of--> C` | `parent_of` 자체를 transitive로 오인해서는 안 된다. |
+
+#### 함께 정의해야 할 기능 경계
+
+1. inverse, symmetric, transitive, subclass, relation composition과 default value 중 허용할
+   derivation의 범위 및 Relation Type semantics와 일반 inference Rule의 grammar
+2. premise, rule ID/version, 중간 Knowledge Object, evaluation context와 freshness provenance
+3. compiled rule selection, dependency index, incremental invalidation, full rebuild, evaluation
+   ordering, cycle, fixed point와 중단 조건
+4. source-backed relation, derived assertion과 orphan·corrupt projection의 판정 및 query에서의
+   direct-only, inferred-only, combined view와 explanation
+5. 동일하거나 qualifier가 다른 Source Edge가 있을 때의 equivalence, 중복 억제와 충돌 처리
+6. monotonic·non-monotonic inference, source 삭제와 negation에 따른 결론 철회 정책
+7. inferred 결과가 validation, required relation 또는 permission의 근거가 될 수 있는 범위
+
+#### Source Edge 생성 보조 기능 후보
+
+향후 derived assertion을 first-class 관계 Knowledge Object로 보존하는 기능을 채택한다면,
+projection 결과를 제자리에서 변환하지 않고 권한 확인과 validation을 거친 source mutation으로
+새 canonical ID의 Edge를 생성한다. 보조 기능은 계산된 relation의 `source`, `target`과 Relation
+Type을 초기값으로 제공할 수 있으며, derivation provenance를 어떤 `props`에 기록할지는 이 단계에서
+정한다. 나머지 Edge 필수 요소는 일반 Edge 생성 contract를 따른다.
+
+생성된 Source Edge는 독립 Knowledge Object이므로 premise나 rule이 사라졌다는 이유만으로 자동
+삭제하지 않는 방향을 검토한다. permission, failure atomicity, provenance shape, 중복 판정과 생성
+후 projection 갱신은 reasoning 기능과 함께 승인해야 한다.
