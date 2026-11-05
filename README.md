@@ -1,4 +1,4 @@
-# L.W.S. - Listro Wiki System
+# [Deprecated] L.W.S. - Listro Wiki System
 
 Korean: [README.ko.md](./README.ko.md)
 
