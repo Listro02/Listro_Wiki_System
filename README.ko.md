@@ -1,6 +1,12 @@
-# L.W.S. - Listro Wiki System
+# [Deprecated] L.W.S. - Listro Wiki System
 
 [English](./README.md) | 한국어
+
+> **Deprecated — 개발 중단**
+>
+> L.W.S. (Listro Wiki System)의 개발은 중단되었습니다. 후속 개발은 [L.K.S. (Listro Knowledge System)](https://github.com/Listro02/Listro_Knowledge_System)에서 진행합니다.
+>
+> 이 저장소는 과거 구현과 설계 기록을 참고할 수 있도록 보존합니다. 아래 문서는 개발 중단 당시의 L.W.S.를 설명합니다.
 
 L.W.S.는 하나의 핵심 철학 위에 세우는 graph-first wiki system이다.
 
