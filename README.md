@@ -2,6 +2,12 @@
 
 Korean: [README.ko.md](./README.ko.md)
 
+> **Deprecated — development discontinued.**
+>
+> Development of L.W.S. (Listro Wiki System) has been discontinued. Further development continues in [L.K.S. (Listro Knowledge System)](https://github.com/Listro02/Listro_Knowledge_System).
+>
+> This repository is preserved for reference to its past implementation and design. The documentation below describes L.W.S. at the time development stopped.
+
 L.W.S. is still an early implementation, but the backend core contract has moved beyond pure concept work. The current repository contains the app code, schemas, validators, services, API routes, generated read-model code, tests, and docs. Real node JSON, edge JSON, event logs, indexes, runtime files, backups, and secrets live outside this repository.
 
 L.W.S. is a graph-first wiki system built around one core idea:
